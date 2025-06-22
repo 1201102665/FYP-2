@@ -22,26 +22,26 @@ const CarCard = ({ car, onBookNow }: CarCardProps) => {
       <div className="flex flex-col md:flex-row" data-id="4g6l2809t" data-path="src/components/CarCard.tsx">
         <div className="md:w-1/3 h-48 md:h-auto" data-id="9xma1yr5o" data-path="src/components/CarCard.tsx">
           <img
-            src={car.image}
-            alt={car.name}
+            src={car.images[0] || '/placeholder.svg'}
+            alt={`${car.make} ${car.model}`}
             className="w-full h-full object-cover" data-id="x7r6t70pk" data-path="src/components/CarCard.tsx" />
         </div>
         
         <div className="p-4 flex flex-col justify-between flex-grow" data-id="2bhpzlt7o" data-path="src/components/CarCard.tsx">
           <div data-id="yoivetofk" data-path="src/components/CarCard.tsx">
-            <h3 className="text-lg font-bold" data-id="f2d3p6moz" data-path="src/components/CarCard.tsx">{car.name}</h3>
+            <h3 className="text-lg font-bold" data-id="f2d3p6moz" data-path="src/components/CarCard.tsx">{car.make} {car.model}</h3>
             
             <div className="flex items-center mt-2" data-id="wqzcfy08g" data-path="src/components/CarCard.tsx">
               <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-id="vankjaskd" data-path="src/components/CarCard.tsx">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" data-id="ddcu3f21g" data-path="src/components/CarCard.tsx" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" data-id="7tonhlsck" data-path="src/components/CarCard.tsx" />
               </svg>
-              <span className="ml-1 text-sm text-gray-700" data-id="lqxr14cyv" data-path="src/components/CarCard.tsx">{car.location}</span>
+              <span className="ml-1 text-sm text-gray-700" data-id="lqxr14cyv" data-path="src/components/CarCard.tsx">{car.location_city}, {car.location_country}</span>
             </div>
           </div>
           
           <div className="mt-4" data-id="oe7k3rtuq" data-path="src/components/CarCard.tsx">
-            <p className="font-bold" data-id="xcepubz04" data-path="src/components/CarCard.tsx">${car.price} per day</p>
+            <p className="font-bold" data-id="xcepubz04" data-path="src/components/CarCard.tsx">MYR {car.daily_rate} per day</p>
           </div>
           
           <div className="mt-2 flex flex-wrap gap-2" data-id="jvrlezovl" data-path="src/components/CarCard.tsx">

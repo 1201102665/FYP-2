@@ -15,13 +15,18 @@ import ProfilePage from './pages/ProfilePage';
 import FlightDetailsPage from './pages/FlightDetailsPage';
 import FlightBookingPage from './pages/FlightBookingPage';
 import HotelDetailsPage from './pages/HotelDetailsPage';
+import HotelBookingPage from './pages/HotelBookingPage';
 import CarDetailsPage from './pages/CarDetailsPage';
 import PackageDetailsPage from './pages/PackageDetailsPage';
+import PackageBookingSuccessPage from './pages/PackageBookingSuccessPage';
+import RateFlightPage from './pages/RateFlightPage';
+import BookingConfirmedWrapper from './components/BookingConfirmedWrapper';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import PaymentPage from './pages/PaymentPage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import AIAssistantPage from './pages/AIAssistantPage';
+import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -43,13 +48,19 @@ function App() {
                 <Route path="/flight-details/:id" element={<FlightDetailsPage />} />
                 <Route path="/flight-booking" element={<FlightBookingPage />} />
                 <Route path="/hotel-details/:id" element={<HotelDetailsPage />} />
+                <Route path="/hotel-booking" element={<HotelBookingPage />} />
+                <Route path="/hotel-booking/:id" element={<HotelBookingPage />} />
                 <Route path="/car-details/:id" element={<CarDetailsPage />} />
                 <Route path="/package-details/:id" element={<PackageDetailsPage />} />
+                <Route path="/package-booking-success" element={<PackageBookingSuccessPage />} />
+                <Route path="/rate-flight" element={<RateFlightPage />} />
+                <Route path="/booking-confirmation/:reference" element={<BookingConfirmedWrapper />} />
                 <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
                 <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
                 <Route path="/payment" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
                 <Route path="/payment-success" element={<ProtectedRoute><PaymentSuccessPage /></ProtectedRoute>} />
                 <Route path="/ai-assistant" element={<AIAssistantPage />} />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
           </Router>

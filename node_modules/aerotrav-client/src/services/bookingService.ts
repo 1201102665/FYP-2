@@ -35,13 +35,10 @@ export interface PaymentIntentResponse {
 
 // Create a payment intent
 export const createPaymentIntent = async (amount: number): Promise<PaymentIntentResponse> => {
-  const { data, error } = await post('/api/bookings/payment-intent', {
+  return await post<PaymentIntentResponse>('/api/bookings/payment-intent', {
     amount,
     currency: 'usd'
   });
-
-  if (error) throw error;
-  return data;
 };
 
 // Create a new booking
@@ -54,7 +51,7 @@ paymentMethod: string,
 paymentIntentId: string | undefined,
 totalAmount: number)
 : Promise<{bookingId: number;bookingReference: string;}> => {
-  const { data, error } = await post('/api/bookings', {
+  return await post<{bookingId: number;bookingReference: string;}>('/api/bookings', {
     userId,
     userEmail,
     userName,
@@ -63,25 +60,16 @@ totalAmount: number)
     paymentIntentId,
     totalAmount
   });
-
-  if (error) throw error;
-  return data;
 };
 
 // Get all bookings for a user
 export const getUserBookings = async (userId: string): Promise<Booking[]> => {
-  const { data, error } = await get(`/api/bookings/user/${userId}`);
-
-  if (error) throw error;
-  return data;
+  return await get<Booking[]>(`/api/bookings/user/${userId}`);
 };
 
 // Get a single booking by ID or reference
 export const getBooking = async (idOrReference: string | number): Promise<Booking> => {
-  const { data, error } = await get(`/api/bookings/${idOrReference}`);
-
-  if (error) throw error;
-  return data;
+  return await get<Booking>(`/api/bookings/${idOrReference}`);
 };
 
 // Update booking status
@@ -89,9 +77,7 @@ export const updateBookingStatus = async (
 id: number,
 status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED')
 : Promise<void> => {
-  const { error } = await put(`/api/bookings/${id}/status`, { status });
-
-  if (error) throw error;
+  await put<void>(`/api/bookings/${id}/status`, { status });
 };
 
 export default {

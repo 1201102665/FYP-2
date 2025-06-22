@@ -128,7 +128,7 @@ Write-Host "`n🌐 Creating client environment..." -ForegroundColor Green
 
 @"
 VITE_API_URL=http://localhost:3001/api
-VITE_AMADEUS_API_URL=https://test.api.amadeus.com
+# Amadeus API removed - using MySQL database instead
 VITE_APP_NAME=AeroTrav
 VITE_APP_VERSION=1.0.0
 VITE_ENVIRONMENT=development
@@ -165,8 +165,7 @@ JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 JWT_EXPIRES_IN=24h
 
 # API Keys
-AMADEUS_API_KEY=your_amadeus_api_key
-AMADEUS_API_SECRET=your_amadeus_api_secret
+# Amadeus API removed - using MySQL database for real flight data
 
 # File Upload
 MAX_FILE_SIZE=10mb
@@ -246,7 +245,7 @@ AeroTrav is a modern travel booking platform built with React, TypeScript, Node.
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS
 - **Backend**: Node.js + Express + MySQL  
 - **Database**: MySQL with structured schema
-- **APIs**: Amadeus API for flight data
+- **APIs**: MySQL database for flight data
 
 ## Quick Start
 

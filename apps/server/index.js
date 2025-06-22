@@ -21,12 +21,10 @@ console.log('🔍 Environment Debug:');
 console.log('- .env path:', envPath);
 console.log('- NODE_ENV:', process.env.NODE_ENV || 'undefined');
 console.log('- PORT:', process.env.PORT || 'undefined');
-console.log('- AMADEUS_API_KEY:', process.env.AMADEUS_API_KEY ? '✅ Loaded (' + process.env.AMADEUS_API_KEY.substring(0, 8) + '...)' : '❌ Missing');
-console.log('- AMADEUS_API_SECRET:', process.env.AMADEUS_API_SECRET ? '✅ Loaded (' + process.env.AMADEUS_API_SECRET.substring(0, 8) + '...)' : '❌ Missing');
 
 // Import routes
 import authRoutes from './routes/auth.js';
-import flightRoutes from './routes/flights.js'; // Using real Amadeus API
+import flightRoutes from './routes/flights.js';
 import hotelRoutes from './routes/hotels.js';
 import carRoutes from './routes/cars.js';
 import packageRoutes from './routes/packages.js';
@@ -53,8 +51,8 @@ app.use(helmet({
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 1 * 60 * 1000, // 1 minute
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000, // limit each IP to 1000 requests per windowMs
   message: {
     error: 'Too many requests from this IP, please try again later.',
   },

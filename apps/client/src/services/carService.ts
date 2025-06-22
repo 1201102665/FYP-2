@@ -1,174 +1,142 @@
-import { get, post, put, del } from './api';
-import { mockCars, mockCarReservations, mockCarReviews } from './mockData';
+import api from './api';
 
 export interface Car {
   id: number;
-  name: string;
-  price: number;
-  location: string;
-  image: string;
+  make: string;
+  model: string;
+  year: number;
   category: string;
+  transmission: string;
+  fuel_type: string;
+  doors: number;
+  seats: number;
+  luggage_capacity: number;
+  air_conditioning: boolean;
   features: string[];
-}
-
-export interface CarReservation {
-  id: string;
-  carName: string;
-  startDate: string;
-  endDate: string;
-  location: string;
-  price: number;
-  status: 'active' | 'upcoming' | 'completed';
-}
-
-export interface CarReview {
-  id: string;
-  userName: string;
-  rating: number;
-  date: string;
-  comment: string;
+  images: string[];
+  daily_rate: number;
+  location_city: string;
+  location_country: string;
+  available: boolean;
 }
 
 export interface CarSearchParams {
-  pickupLocation?: string;
-  dropoffLocation?: string;
-  pickupDate?: string;
-  pickupTime?: string;
-  priceRange?: [number, number];
-  category?: string[];
+  location?: string;
+  pickup_date?: string;
+  return_date?: string;
+  category?: string;
+  transmission?: string;
+  min_price?: number;
+  max_price?: number;
 }
 
-// Get all cars
-export const getAllCars = async (): Promise<Car[]> => {
+export interface CarReservation {
+  id: number;
+  car_id: number;
+  user_id: number;
+  pickup_date: string;
+  return_date: string;
+  total_cost: number;
+  status: string;
+}
+
+export interface CarReview {
+  id: number;
+  car_id: number;
+  user_id: number;
+  rating: number;
+  comment: string;
+  created_at: string;
+}
+
+/**
+ * Get all cars from the database
+ */
+export const getCars = async (): Promise<Car[]> => {
   try {
-    // Use a relative API URL with no leading slash
-    const { data, error } = await get('cars');
-    if (error) throw error;
-    return data;
+    const response = await api.get<Car[]>('/cars');
+    return response || [];
   } catch (error) {
-    console.error('Error fetching cars:', error);
-    // Return mock data as fallback
-    return mockCars;
+    console.error('❌ Error fetching cars:', error);
+    throw error;
   }
 };
 
-// Search cars
-export const searchCars = async (params: CarSearchParams): Promise<Car[]> => {
+/**
+ * Search cars with filters
+ */
+export const searchCars = async (searchParams: CarSearchParams): Promise<Car[]> => {
   try {
-    // Use a relative API URL with no leading slash
-    const { data, error } = await get('cars/search', params);
-    if (error) throw error;
-    return data;
+    const response = await api.post<Car[]>('/cars/search', searchParams);
+    return response || [];
   } catch (error) {
-    console.error('Error searching cars:', error);
-
-    // Filter mock data based on search parameters
-    let filteredCars = [...mockCars];
-
-    if (params.pickupLocation) {
-      filteredCars = filteredCars.filter((car) =>
-      car.location.toLowerCase().includes(params.pickupLocation!.toLowerCase()));
-    }
-
-    if (params.priceRange) {
-      filteredCars = filteredCars.filter((car) =>
-      car.price >= params.priceRange![0] && car.price <= params.priceRange![1]);
-    }
-
-    if (params.category && params.category.length > 0) {
-      filteredCars = filteredCars.filter((car) =>
-      params.category!.some((cat) => car.category.includes(cat)));
-    }
-
-    return filteredCars;
+    console.error('❌ Error searching cars:', error);
+    throw error;
   }
 };
 
-// Get car by ID
+/**
+ * Get a specific car by ID
+ */
 export const getCarById = async (id: number): Promise<Car | null> => {
   try {
-    // Use a relative API URL with no leading slash
-    const { data, error } = await get(`cars/${id}`);
-    if (error) throw error;
-    return data;
+    const response = await api.get<Car>(`/cars/${id}`);
+    return response || null;
   } catch (error) {
-    console.error(`Error fetching car with ID ${id}:`, error);
-    // Return mock data as fallback
-    const car = mockCars.find((car) => car.id === id);
-    return car || null;
+    console.error(`❌ Error fetching car ID ${id}:`, error);
+    throw error;
   }
 };
 
-// Create a car reservation
-export const createCarReservation = async (reservation: Omit<CarReservation, 'id' | 'status'>): Promise<CarReservation> => {
+/**
+ * Create a car reservation
+ */
+export const createCarReservation = async (reservationData: Omit<CarReservation, 'id'>): Promise<CarReservation> => {
   try {
-    // Use a relative API URL with no leading slash
-    const { data, error } = await post('car-reservations', reservation);
-    if (error) throw error;
-    return data;
+    const response = await api.post<CarReservation>('/cars/reservations', reservationData);
+    return response;
   } catch (error) {
-    console.error('Error creating car reservation:', error);
-    // Generate a mock reservation
-    return {
-      id: Math.random().toString(36).substring(2, 9),
-      ...reservation,
-      status: 'upcoming'
-    };
+    console.error('❌ Error creating car reservation:', error);
+    throw error;
   }
 };
 
-// Get reservations for a user
-export const getUserCarReservations = async (userId: string): Promise<CarReservation[]> => {
+/**
+ * Get car reservations
+ */
+export const getCarReservations = async (): Promise<CarReservation[]> => {
   try {
-    // Use a relative API URL with no leading slash
-    const { data, error } = await get(`car-reservations?userId=${userId}`);
-    if (error) throw error;
-    return data;
+    const response = await api.get<CarReservation[]>('/cars/reservations');
+    return response || [];
   } catch (error) {
-    console.error('Error fetching user car reservations:', error);
-    // Return mock data as fallback
-    return mockCarReservations;
+    console.error('❌ Error fetching car reservations:', error);
+    throw error;
   }
 };
 
-// Create a car review
-export const createCarReview = async (review: Omit<CarReview, 'id' | 'date'>): Promise<CarReview> => {
+/**
+ * Create a car review
+ */
+export const createCarReview = async (reviewData: Omit<CarReview, 'id'>): Promise<CarReview> => {
   try {
-    // Use a relative API URL with no leading slash
-    const { data, error } = await post('car-reviews', review);
-    if (error) throw error;
-    return data;
+    const response = await api.post<CarReview>('/cars/reviews', reviewData);
+    return response;
   } catch (error) {
-    console.error('Error creating car review:', error);
-    // Generate a mock review
-    return {
-      id: Math.random().toString(36).substring(2, 9),
-      ...review,
-      date: new Date().toLocaleDateString()
-    };
+    console.error('❌ Error creating car review:', error);
+    throw error;
   }
 };
 
-// Get car reviews
-export const getCarReviews = async (): Promise<CarReview[]> => {
+/**
+ * Get car reviews
+ */
+export const getCarReviews = async (carId?: number): Promise<CarReview[]> => {
   try {
-    // Use a relative API URL with no leading slash
-    const { data, error } = await get('car-reviews');
-    if (error) throw error;
-    return data;
+    const url = carId ? `/cars/${carId}/reviews` : '/cars/reviews';
+    const response = await api.get<CarReview[]>(url);
+    return response || [];
   } catch (error) {
-    console.error('Error fetching car reviews:', error);
-    // Return mock data as fallback
-    return mockCarReviews;
+    console.error('❌ Error fetching car reviews:', error);
+    throw error;
   }
-};
-
-export default {
-  getAllCars,
-  searchCars,
-  getCarById,
-  createCarReservation,
-  getUserCarReservations,
-  createCarReview,
-  getCarReviews
 };

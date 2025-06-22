@@ -1,264 +1,238 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { useToast } from "@/hooks/use-toast";
-import useUserActivity from '@/hooks/use-user-activity';
-import GeminiService from '@/services/GeminiService';
-import { mockUserActivities, mockDestinations, mockPackages } from '../services/mockData';
+import { Badge } from './ui/badge';
+import { TrendingUp, TrendingDown, Minus, Users, MapPin, Star } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { getDestinations } from '@/services/destinationService';
+import { getPackages } from '@/services/packageService';
 
-interface Insight {
-  title: string;
-  description: string;
-  actionText: string;
-  actionLink: string;
-  type: 'suggestion' | 'improvement' | 'tip';
-}
-
-// Generate insights based on user data
-const generateInsightsFromUserData = (userId: string): Insight[] => {
-  // Find user in mock data
-  const user = mockUserActivities.find((u) => u.userId === userId) || mockUserActivities[0];
-  const insights: Insight[] = [];
-
-  // Check profile completeness
-  if (!user.preferences || Object.keys(user.preferences).length < 3) {
-    insights.push({
-      title: "Complete Your Profile",
-      description: "Add your travel preferences to get more personalized recommendations.",
-      actionText: "Update Profile",
-      actionLink: "/profile",
-      type: "improvement"
-    });
-  }
-
-  // Check search history patterns
-  if (user.searchHistory.some((term) => /beach|tropical|resort/i.test(term)) &&
-  !user.clickedItems.includes(1) && !user.clickedItems.includes(8)) {
-    insights.push({
-      title: "Beaches You Might Like",
-      description: "Based on your searches for beach destinations, you might enjoy exploring Bali or the Maldives.",
-      actionText: "View Beach Destinations",
-      actionLink: "/destinations",
-      type: "suggestion"
-    });
-  }
-
-  // Check booking history vs search patterns
-  if (user.searchHistory.length > 3 && user.bookingHistory.length === 0) {
-    insights.push({
-      title: "Ready to Book?",
-      description: "You've been searching but haven't made a booking yet. Prices might increase soon on popular destinations.",
-      actionText: "View Deals",
-      actionLink: "/packages",
-      type: "tip"
-    });
-  }
-
-  // Budget recommendations
-  if (user.preferences?.budget === "high") {
-    insights.push({
-      title: "Luxury Experiences",
-      description: "Discover our curated selection of premium travel experiences and exclusive accommodations.",
-      actionText: "Explore Luxury Travel",
-      actionLink: "/luxury",
-      type: "suggestion"
-    });
-  } else if (user.preferences?.budget === "medium" || user.preferences?.budget === "low") {
-    insights.push({
-      title: "Travel Smart, Save More",
-      description: "Book flights 2-3 months in advance and travel during shoulder seasons for the best deals.",
-      actionText: "View Budget Tips",
-      actionLink: "/tips",
-      type: "tip"
-    });
-  }
-
-  // Car rental suggestion if they've booked flights but no cars
-  if (user.bookingHistory.some((h) => h.type === "flight") &&
-  !user.bookingHistory.some((h) => h.type === "car")) {
-    insights.push({
-      title: "Need Transportation?",
-      description: "You've booked flights, but no car rental yet. Secure your car early for better rates and availability.",
-      actionText: "View Car Rentals",
-      actionLink: "/car-rental",
-      type: "improvement"
-    });
-  }
-
-  // Activity preferences
-  if (user.preferences?.activities?.some((act) => /cultural|tour/i.test(act))) {
-    insights.push({
-      title: "Cultural Experiences",
-      description: "Discover authentic local experiences and guided cultural tours at your destinations.",
-      actionText: "Explore Cultural Tours",
-      actionLink: "/activities",
-      type: "suggestion"
-    });
-  }
-
-  // Return 3 insights at most
-  return insights.slice(0, 3);
-};
-
-// Fallback insights if API fails
-const fallbackInsights: Insight[] = [
-{
-  title: "Complete Your Profile",
-  description: "Add your travel preferences to get more personalized recommendations.",
-  actionText: "Update Profile",
-  actionLink: "/profile",
-  type: "improvement"
-},
-{
-  title: "Try Different Destinations",
-  description: "Based on your recent searches, you might enjoy exploring new regions.",
-  actionText: "Explore Destinations",
-  actionLink: "/destinations",
-  type: "suggestion"
-},
-{
-  title: "Travel Planning Tip",
-  description: "Book flights 2-3 months in advance for the best prices on your favorite routes.",
-  actionText: "Search Flights",
-  actionLink: "/flights",
-  type: "tip"
-}];
-
+// Sample analytics data - in a real app this would come from your analytics service
+const analyticsData = [
+  { month: 'Jan', bookings: 45, revenue: 12000, satisfaction: 4.2 },
+  { month: 'Feb', bookings: 52, revenue: 15000, satisfaction: 4.3 },
+  { month: 'Mar', bookings: 48, revenue: 13500, satisfaction: 4.1 },
+  { month: 'Apr', bookings: 61, revenue: 18000, satisfaction: 4.4 },
+  { month: 'May', bookings: 55, revenue: 16500, satisfaction: 4.2 },
+  { month: 'Jun', bookings: 67, revenue: 21000, satisfaction: 4.5 },
+];
 
 const PerformanceInsights: React.FC = () => {
-  const [insights, setInsights] = useState<Insight[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const { toast } = useToast();
-  const { userActivity } = useUserActivity();
+  const [destinations, setDestinations] = useState<any[]>([]);
+  const [packages, setPackages] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const generateInsights = async () => {
-      setLoading(true);
+    const fetchData = async () => {
       try {
-        // In a real implementation, we would call the Gemini API here
-        // For this demo, use our mock user data to generate insights
-        const randomUserId = mockUserActivities[Math.floor(Math.random() * mockUserActivities.length)].userId;
-        console.log('Generating insights for user', randomUserId);
-
-        // Generate personalized insights based on user data
-        const userInsights = generateInsightsFromUserData(randomUserId);
-
-        // If we couldn't generate enough insights, add some from fallback
-        const combinedInsights = [...userInsights];
-        if (combinedInsights.length < 3) {
-          const neededInsights = 3 - combinedInsights.length;
-          combinedInsights.push(...fallbackInsights.slice(0, neededInsights));
-        }
-
-        // Simulate API latency
-        setTimeout(() => {
-          setInsights(combinedInsights);
-          setLoading(false);
-        }, 1000);
+        const [destinationsData, packagesData] = await Promise.all([
+          getDestinations(),
+          getPackages()
+        ]);
+        setDestinations(destinationsData);
+        setPackages(packagesData);
       } catch (error) {
-        console.error("Failed to generate insights:", error);
-        setInsights(fallbackInsights);
-        toast({
-          title: "Notice",
-          description: "Using sample insights - personalized insights will appear as you use the app.",
-          variant: "default"
-        });
-        setLoading(false);
+        console.error('Error fetching performance data:', error);
+        setDestinations([]);
+        setPackages([]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    generateInsights();
-  }, [toast, userActivity]);
+    fetchData();
+  }, []);
 
-  // Get icon based on insight type
-  const getInsightIcon = (type: string) => {
-    switch (type) {
-      case 'suggestion':
-        return (
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-blue-600" data-id="45yj00yba" data-path="src/components/PerformanceInsights.tsx">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" data-id="tdvb3avip" data-path="src/components/PerformanceInsights.tsx">
-              <path d="M12 3a6 6 0 0 0-6 6c0 2.4 1.4 4.5 3.5 5.5a2 2 0 0 1 1 1.5V18a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-2a2 2 0 0 1 1-1.5A6 6 0 0 0 12 3" data-id="5cmjju7hl" data-path="src/components/PerformanceInsights.tsx" />
-              <path d="M10 21h4" data-id="s6dds99hm" data-path="src/components/PerformanceInsights.tsx" />
-            </svg>
-          </div>);
+  // Calculate metrics
+  const totalBookings = analyticsData.reduce((sum, month) => sum + month.bookings, 0);
+  const totalRevenue = analyticsData.reduce((sum, month) => sum + month.revenue, 0);
+  const avgSatisfaction = analyticsData.reduce((sum, month) => sum + month.satisfaction, 0) / analyticsData.length;
+  const bookingTrend = analyticsData[analyticsData.length - 1].bookings - analyticsData[analyticsData.length - 2].bookings;
 
-      case 'improvement':
-        return (
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-green-100 text-green-600" data-id="0270slxjs" data-path="src/components/PerformanceInsights.tsx">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" data-id="h1arpd9xc" data-path="src/components/PerformanceInsights.tsx">
-              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" data-id="x54rk0ob8" data-path="src/components/PerformanceInsights.tsx" />
-              <polyline points="16 7 22 7 22 13" data-id="z7dtnidd4" data-path="src/components/PerformanceInsights.tsx" />
-            </svg>
-          </div>);
+  // Calculate top destinations by rating
+  const topDestinations = destinations
+    .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+    .slice(0, 5);
 
-      case 'tip':
-        return (
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-amber-100 text-amber-600" data-id="8x05uvrhr" data-path="src/components/PerformanceInsights.tsx">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" data-id="2vd722dlb" data-path="src/components/PerformanceInsights.tsx">
-              <circle cx="12" cy="12" r="10" data-id="ebw7cxquj" data-path="src/components/PerformanceInsights.tsx" />
-              <line x1="12" x2="12" y1="8" y2="12" data-id="fonym03lm" data-path="src/components/PerformanceInsights.tsx" />
-              <line x1="12" x2="12.01" y1="16" y2="16" data-id="p15y03jii" data-path="src/components/PerformanceInsights.tsx" />
-            </svg>
-          </div>);
+  // Calculate popular packages
+  const popularPackages = packages
+    .sort((a, b) => (b.reviews_count || 0) - (a.reviews_count || 0))
+    .slice(0, 3);
 
-      default:
-        return null;
-    }
-  };
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-pulse bg-gray-200 h-32 rounded-lg"></div>
+        <div className="animate-pulse bg-gray-200 h-64 rounded-lg"></div>
+      </div>
+    );
+  }
 
   return (
-    <Card className="border-none shadow-sm" data-id="csrmf6m86" data-path="src/components/PerformanceInsights.tsx">
-      <CardHeader className="pb-3" data-id="4il8tidpd" data-path="src/components/PerformanceInsights.tsx">
-        <CardTitle className="text-xl font-bold flex items-center gap-2" data-id="4458ff2ay" data-path="src/components/PerformanceInsights.tsx">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" data-id="6ar82ie7a" data-path="src/components/PerformanceInsights.tsx">
-            <circle cx="12" cy="12" r="10" data-id="acc4y6mgl" data-path="src/components/PerformanceInsights.tsx" />
-            <line x1="12" x2="12" y1="16" y2="12" data-id="huyx2g3k9" data-path="src/components/PerformanceInsights.tsx" />
-            <line x1="12" x2="12.01" y1="8" y2="8" data-id="b7r02fpt3" data-path="src/components/PerformanceInsights.tsx" />
-          </svg>
-          AI Travel Insights
-        </CardTitle>
-      </CardHeader>
-      <CardContent data-id="y3isnm8og" data-path="src/components/PerformanceInsights.tsx">
-        {loading ?
-        <div className="space-y-4" data-id="tyr5xensr" data-path="src/components/PerformanceInsights.tsx">
-            {[1, 2, 3].map((i) =>
-          <div key={i} className="flex gap-4 animate-pulse" data-id="040oaznxs" data-path="src/components/PerformanceInsights.tsx">
-                <div className="w-10 h-10 rounded-full bg-gray-200" data-id="ko3kxdanl" data-path="src/components/PerformanceInsights.tsx"></div>
-                <div className="flex-1 space-y-2" data-id="6n5bbe9pt" data-path="src/components/PerformanceInsights.tsx">
-                  <div className="h-4 bg-gray-200 rounded w-3/4" data-id="irukya9tk" data-path="src/components/PerformanceInsights.tsx"></div>
-                  <div className="h-3 bg-gray-200 rounded" data-id="flefroytj" data-path="src/components/PerformanceInsights.tsx"></div>
-                  <div className="h-3 bg-gray-200 rounded w-5/6" data-id="auyvf4byi" data-path="src/components/PerformanceInsights.tsx"></div>
-                </div>
-              </div>
-          )}
-          </div> :
+    <div className="space-y-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalBookings}</div>
+            <p className="text-xs text-muted-foreground flex items-center">
+              {bookingTrend > 0 ? (
+                <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
+              ) : bookingTrend < 0 ? (
+                <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
+              ) : (
+                <Minus className="h-3 w-3 text-gray-500 mr-1" />
+              )}
+              {Math.abs(bookingTrend)} from last month
+            </p>
+          </CardContent>
+        </Card>
 
-        <div className="space-y-4" data-id="pzl9wfqp6" data-path="src/components/PerformanceInsights.tsx">
-            {insights.map((insight, index) =>
-          <React.Fragment key={index} data-id="03g3twrx9" data-path="src/components/PerformanceInsights.tsx">
-                {index > 0 && <Separator className="my-4" data-id="t58r79d4e" data-path="src/components/PerformanceInsights.tsx" />}
-                <div className="flex gap-4" data-id="9tds9a1wv" data-path="src/components/PerformanceInsights.tsx">
-                  {getInsightIcon(insight.type)}
-                  <div className="flex-1" data-id="xze05pmxw" data-path="src/components/PerformanceInsights.tsx">
-                    <h3 className="font-medium" data-id="hp2bkmdoo" data-path="src/components/PerformanceInsights.tsx">{insight.title}</h3>
-                    <p className="text-sm text-gray-600 mt-1 mb-2" data-id="q55axyz2e" data-path="src/components/PerformanceInsights.tsx">{insight.description}</p>
-                    <Button
-                  variant="link"
-                  className="p-0 h-auto text-aerotrav-blue font-medium"
-                  asChild data-id="rfotc7gzw" data-path="src/components/PerformanceInsights.tsx">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              +12.5% from last period
+            </p>
+          </CardContent>
+        </Card>
 
-                      <a href={insight.actionLink} data-id="roiadewhh" data-path="src/components/PerformanceInsights.tsx">{insight.actionText} →</a>
-                    </Button>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg Satisfaction</CardTitle>
+            <Star className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{avgSatisfaction.toFixed(1)}</div>
+            <p className="text-xs text-muted-foreground">
+              ⭐ Customer rating
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Destinations</CardTitle>
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{destinations.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Available worldwide
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Booking Trends</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={analyticsData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="bookings" stroke="#3b82f6" strokeWidth={2} />
+                <Line type="monotone" dataKey="satisfaction" stroke="#10b981" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Revenue by Month</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={analyticsData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="revenue" fill="#3b82f6" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Top Destinations and Packages */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Destinations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {topDestinations.length > 0 ? (
+                topDestinations.map((destination, index) => (
+                  <div key={destination.id} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Badge variant={index === 0 ? "default" : "secondary"}>
+                        #{index + 1}
+                      </Badge>
+                      <span className="font-medium">{destination.name}</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                      <span>{destination.rating?.toFixed(1) || 'N/A'}</span>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-4 text-gray-500">
+                  <p>No destination data available</p>
                 </div>
-              </React.Fragment>
-          )}
-          </div>
-        }
-      </CardContent>
-    </Card>);
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>Popular Packages</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {popularPackages.length > 0 ? (
+                popularPackages.map((pkg, index) => (
+                  <div key={pkg.id} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Badge variant={index === 0 ? "default" : "secondary"}>
+                        #{index + 1}
+                      </Badge>
+                      <span className="font-medium">{pkg.name}</span>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      ${pkg.price}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-4 text-gray-500">
+                  <p>No package data available</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
 };
 
 export default PerformanceInsights;

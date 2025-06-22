@@ -59,18 +59,18 @@ const PackageBookingForm: React.FC<PackageBookingFormProps> = ({
 
     if (name.includes('.')) {
       const [group, field] = name.split('.');
-      setFormData({
-        ...formData,
+      setFormData((prev) => ({
+        ...prev,
         [group]: {
-          ...formData[group as keyof typeof formData],
+          ...(prev[group as keyof typeof prev] as Record<string, any>),
           [field]: value
         }
-      });
+      }));
     } else {
-      setFormData({
-        ...formData,
+      setFormData((prev) => ({
+        ...prev,
         [name]: value
-      });
+      }));
     }
   };
 

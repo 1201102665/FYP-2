@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Destination } from "@/services/destinationService";
 import destinationService from "@/services/destinationService";
 import { useToast } from "@/hooks/use-toast";
-import { mockDestinations } from "@/services/mockData";
+
 import { 
   Search, 
   MapPin, 
@@ -35,6 +35,9 @@ import {
   Phone,
   Mail
 } from "lucide-react";
+import TravelOptions from "@/components/TravelOptions";
+import CheckoutProgress from "@/components/CheckoutProgress";
+import { getDestinations } from "@/services/destinationService";
 
 const HomePage = () => {
   const { trackView } = useUserActivityContext();
@@ -51,13 +54,22 @@ const HomePage = () => {
     guests: '1 Guest'
   });
 
-  // Use mock destinations directly for testing
+  // Fetch destinations from API
   useEffect(() => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setApiDestinations(mockDestinations);
-      setIsLoading(false);
-    }, 500);
+    const fetchDestinations = async () => {
+      setIsLoading(true);
+      try {
+        const destinations = await getDestinations();
+        setApiDestinations(destinations);
+      } catch (error) {
+        console.error('Error fetching destinations:', error);
+        setApiDestinations([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchDestinations();
   }, []);
 
   useEffect(() => {

@@ -19,7 +19,7 @@ import Breadcrumb from "@/components/Breadcrumb";
 import {
   CarSearchParams } from
 "@/services/carService";
-import { mockCars, mockCarReservations, mockCarReviews } from "@/services/mockData";
+import { getCars, searchCars, getCarReservations, getCarReviews } from "@/services/carService";
 import { useUserActivityContext } from "@/contexts/UserActivityContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
@@ -267,12 +267,14 @@ const CarRentalPage = () => {
   // Load user reservations if authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      const fetchReservations = async () => {
-        try {
-          setReservations(mockCarReservations);
-        } catch (error) {
-          console.error('Failed to fetch reservations:', error);
-        }
+              const fetchReservations = async () => {
+          try {
+            const reservations = await getCarReservations();
+            setReservations(reservations);
+          } catch (error) {
+            console.error('Error fetching reservations:', error);
+            setReservations([]);
+          }
       };
 
       fetchReservations();
@@ -283,9 +285,11 @@ const CarRentalPage = () => {
   useEffect(() => {
     const fetchReviews = async () => {
       try {
-        setReviews(mockCarReviews);
+        const reviewsData = await getCarReviews();
+        setReviews(reviewsData);
       } catch (error) {
         console.error('Failed to fetch reviews:', error);
+        setReviews([]); // Set empty array as fallback
       }
     };
 

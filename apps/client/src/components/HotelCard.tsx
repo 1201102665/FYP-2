@@ -29,7 +29,7 @@ const HotelCard = ({ hotel, onBookNow }: HotelCardProps) => {
   const { toast } = useToast();
 
   const handleHotelClick = () => {
-    navigate(`/hotel/${hotel.id}`, { 
+    navigate(`/hotel-details/${hotel.id}`, { 
       state: { hotel } 
     });
   };

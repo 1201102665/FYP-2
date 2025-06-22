@@ -1,270 +1,200 @@
 import React, { useState, useEffect } from 'react';
-import { useToast } from "@/hooks/use-toast";
-import useUserActivity from '@/hooks/use-user-activity';
-import GeminiService from '@/services/GeminiService';
-import AIRecommendationCard, { Recommendation } from './AIRecommendationCard';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { mockUserActivities, mockDestinations, mockHotels, mockPackages } from '../services/mockData';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Heart, MapPin, Clock, Star, TrendingUp } from 'lucide-react';
+import { getDestinations } from '@/services/destinationService';
+import { getPackages } from '@/services/packageService';
 
-// Sample destination images for recommendations
-const destinationImages = {
-  "Paris": "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
-  "Bali": "https://images.unsplash.com/photo-1537996194471-e657df975ab4?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
-  "Tokyo": "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
-  "New York": "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
-  "Barcelona": "https://images.unsplash.com/photo-1539037116277-4db20889f2d4?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
-  "Rome": "https://images.unsplash.com/photo-1529260830199-42c24126f198?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80"
+interface RecommendationCardProps {
+  id: number;
+  title: string;
+  subtitle: string;
+  image: string;
+  rating: number;
+  price: number;
+  tags: string[];
+  type: 'destination' | 'hotel' | 'package';
+}
+
+const RecommendationCard: React.FC<RecommendationCardProps> = ({ 
+  id, title, subtitle, image, rating, price, tags, type 
+}) => {
+  const [liked, setLiked] = useState(false);
+
+  return (
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+      <div className="relative">
+        <img 
+          src={image} 
+          alt={title}
+          className="w-full h-40 object-cover"
+        />
+        <button
+          onClick={() => setLiked(!liked)}
+          className={`absolute top-2 right-2 p-2 rounded-full backdrop-blur-sm transition-colors ${
+            liked ? 'bg-red-100 text-red-500' : 'bg-white/80 text-gray-600 hover:text-red-500'
+          }`}
+        >
+          <Heart className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} />
+        </button>
+      </div>
+      
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex-1">
+            <h3 className="font-semibold text-sm mb-1">{title}</h3>
+            <p className="text-xs text-gray-600 flex items-center">
+              <MapPin className="h-3 w-3 mr-1" />
+              {subtitle}
+            </p>
+          </div>
+          <div className="flex items-center space-x-1 text-xs">
+            <Star className="h-3 w-3 text-yellow-400 fill-current" />
+            <span>{rating}</span>
+          </div>
+        </div>
+        
+        <div className="flex flex-wrap gap-1 mb-3">
+          {tags.slice(0, 2).map((tag, index) => (
+            <Badge key={index} variant="secondary" className="text-xs px-2 py-0">
+              {tag}
+            </Badge>
+          ))}
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <div className="text-lg font-bold text-aerotrav-blue">
+            ${price}
+          </div>
+          <Button size="sm" className="text-xs">
+            View Details
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
 };
-
-// Generate recommendations based on user activity data
-const generateRecommendations = (userId: string): Recommendation[] => {
-  // Find the user in mock data
-  const user = mockUserActivities.find((u) => u.userId === userId) || mockUserActivities[0];
-
-  // Get destinations based on user preferences
-  const recommendedDestinations = [];
-
-  // Look at search history for clues
-  if (user.searchHistory.some((term) => /beach|tropical|resort/i.test(term))) {
-    recommendedDestinations.push({
-      destination: "Bali, Indonesia",
-      activities: ["Explore Ubud's Sacred Monkey Forest", "Visit Tegalalang Rice Terraces", "Relax at Kuta Beach"],
-      reason: "Based on your searches for beach destinations and interest in tropical locations.",
-      imageUrl: destinationImages["Bali"]
-    });
-  }
-
-  if (user.searchHistory.some((term) => /japan|tokyo|culture/i.test(term)) ||
-  user.preferences.activities.some((act) => /cultural|tour/i.test(act))) {
-    recommendedDestinations.push({
-      destination: "Tokyo, Japan",
-      activities: ["Visit Senso-ji Temple", "Explore Shinjuku Gyoen National Garden", "Experience Shibuya Crossing"],
-      reason: "Matches your interest in Japanese culture and urban exploration.",
-      imageUrl: destinationImages["Tokyo"]
-    });
-  }
-
-  if (user.preferences.budget === "high" ||
-  user.preferences.accommodation === "luxury") {
-    recommendedDestinations.push({
-      destination: "Paris, France",
-      activities: ["Visit the Louvre Museum", "Explore Montmartre", "Dine at a Michelin-starred restaurant"],
-      reason: "Aligns with your preference for luxury accommodations and fine dining experiences.",
-      imageUrl: destinationImages["Paris"]
-    });
-  }
-
-  if (user.preferences.activities.some((act) => /shopping|sightseeing/i.test(act))) {
-    recommendedDestinations.push({
-      destination: "New York, USA",
-      activities: ["Shop on Fifth Avenue", "Visit the Metropolitan Museum of Art", "Explore Central Park"],
-      reason: "Perfect for your shopping and sightseeing preferences in a vibrant urban setting.",
-      imageUrl: destinationImages["New York"]
-    });
-  }
-
-  if (user.preferences.activities.some((act) => /hiking|outdoor|adventure|wildlife/i.test(act))) {
-    recommendedDestinations.push({
-      destination: "Barcelona, Spain",
-      activities: ["Tour Sagrada Familia", "Stroll through Park Güell", "Hike in Montserrat"],
-      reason: "Offers a mix of cultural attractions and nearby outdoor activities you enjoy.",
-      imageUrl: destinationImages["Barcelona"]
-    });
-  }
-
-  // If we couldn't generate recommendations based on preferences, return some defaults
-  if (recommendedDestinations.length === 0) {
-    return [
-    {
-      destination: "Bali, Indonesia",
-      activities: ["Explore Ubud's Sacred Monkey Forest", "Visit Tegalalang Rice Terraces", "Relax at Kuta Beach"],
-      reason: "Popular destination with a mix of beaches, culture, and adventure.",
-      imageUrl: destinationImages["Bali"]
-    },
-    {
-      destination: "Tokyo, Japan",
-      activities: ["Visit Senso-ji Temple", "Explore Shinjuku Gyoen National Garden", "Experience Shibuya Crossing"],
-      reason: "Vibrant city with a unique blend of traditional and modern attractions.",
-      imageUrl: destinationImages["Tokyo"]
-    },
-    {
-      destination: "Rome, Italy",
-      activities: ["Visit the Colosseum", "Explore the Vatican Museums", "Throw a coin in the Trevi Fountain"],
-      reason: "Rich in history, art, and incredible cuisine.",
-      imageUrl: destinationImages["Rome"]
-    }];
-
-  }
-
-  // Return 3 recommendations at most
-  return recommendedDestinations.slice(0, 3);
-};
-
-// Default recommendations if API fails
-const fallbackRecommendations: Recommendation[] = [
-{
-  destination: "Bali, Indonesia",
-  activities: ["Explore Ubud's Sacred Monkey Forest", "Visit Tegalalang Rice Terraces", "Relax at Kuta Beach"],
-  reason: "Based on your preference for beach destinations and cultural experiences.",
-  imageUrl: destinationImages["Bali"]
-},
-{
-  destination: "Tokyo, Japan",
-  activities: ["Visit Senso-ji Temple", "Explore Shinjuku Gyoen National Garden", "Experience Shibuya Crossing"],
-  reason: "Matches your interest in urban exploration and cultural immersion.",
-  imageUrl: destinationImages["Tokyo"]
-},
-{
-  destination: "Barcelona, Spain",
-  activities: ["Tour Sagrada Familia", "Stroll through Park Güell", "Enjoy La Boqueria Market"],
-  reason: "Aligned with your history of exploring European destinations with rich architecture.",
-  imageUrl: destinationImages["Barcelona"]
-}];
-
 
 const AIRecommendationsSection: React.FC = () => {
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<string>("destinations");
-  const { toast } = useToast();
-  const { userActivity } = useUserActivity();
+  const [destinations, setDestinations] = useState<any[]>([]);
+  const [packages, setPackages] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchRecommendations = async () => {
-      setLoading(true);
+    const fetchData = async () => {
       try {
-        // Simulate calling the Gemini API with our mock user data
-        // Use a randomly selected user ID to see different recommendations
-        const randomUserId = mockUserActivities[Math.floor(Math.random() * mockUserActivities.length)].userId;
-        console.log('Using mock user data for', randomUserId);
-
-        // Generate personalized recommendations based on user data
-        const personalizedRecommendations = generateRecommendations(randomUserId);
-        setRecommendations(personalizedRecommendations);
-
-        // Simulate API latency
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-
-        toast({
-          title: "AI Recommendations Ready",
-          description: "Personalized suggestions based on your profile and activity.",
-          variant: "default"
-        });
+        const [destinationsData, packagesData] = await Promise.all([
+          getDestinations(),
+          getPackages()
+        ]);
+        setDestinations(destinationsData);
+        setPackages(packagesData);
       } catch (error) {
-        console.error("Failed to fetch AI recommendations:", error);
-        setRecommendations(fallbackRecommendations);
-        toast({
-          title: "Notice",
-          description: "Using sample recommendations - personalized suggestions will appear as you use the app.",
-          variant: "default"
-        });
+        console.error('Error fetching recommendations data:', error);
+        setDestinations([]);
+        setPackages([]);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
-    fetchRecommendations();
-  }, [toast]);
+    fetchData();
+  }, []);
 
-  const handleRefreshRecommendations = () => {
-    setLoading(true);
-    // Generate new recommendations with a different random user
-    setTimeout(() => {
-      const randomUserId = mockUserActivities[Math.floor(Math.random() * mockUserActivities.length)].userId;
-      console.log('Refreshed with mock user data for', randomUserId);
-      const personalizedRecommendations = generateRecommendations(randomUserId);
-      setRecommendations(personalizedRecommendations);
-      setLoading(false);
-      toast({
-        title: "Recommendations Updated",
-        description: "We've refreshed your personalized suggestions.",
-        variant: "default"
-      });
-    }, 1500);
-  };
+  // Transform data for recommendations
+  const recommendations: RecommendationCardProps[] = [
+    ...destinations.slice(0, 4).map((dest, index) => ({
+      id: dest.id,
+      title: dest.name,
+      subtitle: dest.description?.substring(0, 50) + '...' || 'Amazing destination',
+      image: dest.image || `https://images.unsplash.com/photo-${1500000000000 + index}?w=400&h=200&fit=crop`,
+      rating: dest.rating || 4.5,
+      price: dest.price || 899,
+      tags: ['Popular', 'Trending'],
+      type: 'destination' as const
+    })),
+    ...packages.slice(0, 2).map((pkg, index) => ({
+      id: pkg.id,
+      title: pkg.name,
+      subtitle: pkg.destinations?.join(', ') || pkg.description?.substring(0, 50) + '...' || 'Travel package',
+      image: pkg.image || `https://images.unsplash.com/photo-${1600000000000 + index}?w=400&h=200&fit=crop`,
+      rating: pkg.rating || 4.3,
+      price: pkg.price || 1299,
+      tags: pkg.included_services?.slice(0, 2) || ['All-inclusive', 'Premium'],
+      type: 'package' as const
+    }))
+  ];
+
+  if (isLoading) {
+    return (
+      <Card className="border-none shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-xl font-bold flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            AI-Powered Recommendations
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="animate-pulse">
+                <div className="bg-gray-200 h-40 rounded-t-lg"></div>
+                <div className="bg-white p-4 rounded-b-lg border border-t-0">
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded mb-3 w-3/4"></div>
+                  <div className="flex gap-2 mb-3">
+                    <div className="h-5 bg-gray-200 rounded w-16"></div>
+                    <div className="h-5 bg-gray-200 rounded w-12"></div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div className="h-6 bg-gray-200 rounded w-16"></div>
+                    <div className="h-8 bg-gray-200 rounded w-20"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <div className="py-8 px-4" data-id="gr6zujh31" data-path="src/components/AIRecommendationsSection.tsx">
-      <div className="flex items-center justify-between mb-6" data-id="v3ghwnan1" data-path="src/components/AIRecommendationsSection.tsx">
-        <div data-id="t4xq517mh" data-path="src/components/AIRecommendationsSection.tsx">
-          <h2 className="text-2xl font-bold text-gray-900" data-id="bjqkjnv24" data-path="src/components/AIRecommendationsSection.tsx">Personalized for You</h2>
-          <p className="text-gray-600" data-id="06cdsmt9p" data-path="src/components/AIRecommendationsSection.tsx">AI-powered recommendations based on your preferences and activity</p>
+    <Card className="border-none shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-xl font-bold flex items-center gap-2">
+          <TrendingUp className="h-5 w-5" />
+          AI-Powered Recommendations
+        </CardTitle>
+        <p className="text-sm text-gray-600 mt-1">
+          Personalized suggestions based on your preferences and trending destinations
+        </p>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {recommendations.map((rec) => (
+            <RecommendationCard key={`${rec.type}-${rec.id}`} {...rec} />
+          ))}
         </div>
-        <Button
-          onClick={handleRefreshRecommendations}
-          variant="outline"
-          disabled={loading}
-          className="flex items-center gap-2" data-id="ytb7q9t6s" data-path="src/components/AIRecommendationsSection.tsx">
-
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={loading ? "animate-spin" : ""} data-id="xcqoz9u5x" data-path="src/components/AIRecommendationsSection.tsx">
-
-            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" data-id="sumhr7iyf" data-path="src/components/AIRecommendationsSection.tsx" />
-            <path d="M3 3v5h5" data-id="kfejwe2x3" data-path="src/components/AIRecommendationsSection.tsx" />
-          </svg>
-          {loading ? "Updating..." : "Refresh"}
-        </Button>
-      </div>
-
-      <Tabs defaultValue="destinations" className="mb-8" onValueChange={setActiveTab} data-id="jlsjug4d6" data-path="src/components/AIRecommendationsSection.tsx">
-        <TabsList className="mb-4" data-id="xwncfumzw" data-path="src/components/AIRecommendationsSection.tsx">
-          <TabsTrigger value="destinations" data-id="jqf2fiwiw" data-path="src/components/AIRecommendationsSection.tsx">Destinations</TabsTrigger>
-          <TabsTrigger value="activities" data-id="83po9bwx9" data-path="src/components/AIRecommendationsSection.tsx">Activities</TabsTrigger>
-          <TabsTrigger value="packages" data-id="swa1ary5l" data-path="src/components/AIRecommendationsSection.tsx">Packages</TabsTrigger>
-        </TabsList>
         
-        <TabsContent value="destinations" className="mt-2" data-id="es2jv71ah" data-path="src/components/AIRecommendationsSection.tsx">
-          {loading ?
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6" data-id="gri94mid7" data-path="src/components/AIRecommendationsSection.tsx">
-              {[1, 2, 3].map((i) =>
-            <div key={i} className="rounded-lg bg-gray-100 animate-pulse h-[400px]" data-id="rlp2vvaxe" data-path="src/components/AIRecommendationsSection.tsx"></div>
-            )}
-            </div> :
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6" data-id="o989ncvl3" data-path="src/components/AIRecommendationsSection.tsx">
-              {recommendations.map((recommendation, index) =>
-            <AIRecommendationCard
-              key={index}
-              recommendation={recommendation}
-              onViewDetails={() => {
-                toast({
-                  title: "Destination Details",
-                  description: `You selected ${recommendation.destination}`,
-                  variant: "default"
-                });
-              }} data-id="akqsrsvk1" data-path="src/components/AIRecommendationsSection.tsx" />
-
-            )}
-            </div>
-          }
-        </TabsContent>
-        
-        <TabsContent value="activities" className="mt-2" data-id="ty1s20epr" data-path="src/components/AIRecommendationsSection.tsx">
-          <div className="text-center py-12" data-id="lmuvvt2gh" data-path="src/components/AIRecommendationsSection.tsx">
-            <p className="text-gray-500" data-id="gitkb766r" data-path="src/components/AIRecommendationsSection.tsx">Activity recommendations will be available as you use the app more.</p>
-            <Button className="mt-4 bg-aerotrav-blue hover:bg-aerotrav-blue-700" data-id="uvjh7poy7" data-path="src/components/AIRecommendationsSection.tsx">Explore Popular Activities</Button>
+        {recommendations.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No recommendations available at the moment.</p>
+            <p className="text-sm">Check back later for personalized travel suggestions!</p>
           </div>
-        </TabsContent>
+        )}
         
-        <TabsContent value="packages" className="mt-2" data-id="c2t0d3ywc" data-path="src/components/AIRecommendationsSection.tsx">
-          <div className="text-center py-12" data-id="9i7wzrh0i" data-path="src/components/AIRecommendationsSection.tsx">
-            <p className="text-gray-500" data-id="25t1yacuc" data-path="src/components/AIRecommendationsSection.tsx">Package recommendations will be personalized as you browse more vacation packages.</p>
-            <Button className="mt-4 bg-aerotrav-blue hover:bg-aerotrav-blue-700" data-id="2pzl3v1ej" data-path="src/components/AIRecommendationsSection.tsx">Browse All Packages</Button>
-          </div>
-        </TabsContent>
-      </Tabs>
-    </div>);
-
+        <div className="mt-6 text-center">
+          <Button variant="outline" className="bg-white hover:bg-gray-50">
+            <Clock className="h-4 w-4 mr-2" />
+            Refresh Recommendations
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
 };
 
 export default AIRecommendationsSection;

@@ -1,5 +1,4 @@
 import api from './api';
-import { mockDestinations } from './mockData';
 
 // Define types
 export interface Destination {
@@ -9,46 +8,32 @@ export interface Destination {
   description: string;
   price: number;
   rating: number;
-  created_at?: string;
-  updated_at?: string;
 }
 
-export interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  message?: string;
-}
+
 
 /**
- * Get all destinations
+ * Get all destinations from the database
  */
-export const getAllDestinations = async (): Promise<Destination[]> => {
+export const getDestinations = async (): Promise<Destination[]> => {
   try {
-    const response = await api.get<ApiResponse<Destination[]>>('destinations');
-    return response.data;
+    const response = await api.get<Destination[]>('/destinations');
+    return response || [];
   } catch (error) {
-    console.error('Error fetching destinations:', error);
-    // Return mock data if the API call fails
-    console.info('Using mock destination data');
-    return mockDestinations;
+    console.error('❌ Error fetching destinations:', error);
+    throw error;
   }
 };
 
 /**
- * Get a single destination by ID
+ * Get a specific destination by ID
  */
-export const getDestinationById = async (id: number): Promise<Destination> => {
+export const getDestinationById = async (id: number): Promise<Destination | null> => {
   try {
-    const response = await api.get<ApiResponse<Destination>>(`destinations/${id}`);
-    return response.data;
+    const response = await api.get<Destination>(`/destinations/${id}`);
+    return response || null;
   } catch (error) {
-    console.error(`Error fetching destination with ID ${id}:`, error);
-    // Return mock data if the API call fails
-    const mockDestination = mockDestinations.find((d) => d.id === id);
-    if (mockDestination) {
-      console.info(`Using mock data for destination ID ${id}`);
-      return mockDestination;
-    }
+    console.error(`❌ Error fetching destination ID ${id}:`, error);
     throw error;
   }
 };
@@ -58,8 +43,8 @@ export const getDestinationById = async (id: number): Promise<Destination> => {
  */
 export const createDestination = async (destinationData: Omit<Destination, 'id'>): Promise<Destination> => {
   try {
-    const response = await api.post<ApiResponse<Destination>>('destinations', destinationData);
-    return response.data;
+    const response = await api.post<Destination>('destinations', destinationData);
+    return response;
   } catch (error) {
     console.error('Error creating destination:', error);
     throw error;
@@ -71,7 +56,7 @@ export const createDestination = async (destinationData: Omit<Destination, 'id'>
  */
 export const updateDestination = async (id: number, destinationData: Partial<Destination>): Promise<void> => {
   try {
-    await api.put<ApiResponse<void>>(`destinations/${id}`, destinationData);
+    await api.put<void>(`destinations/${id}`, destinationData);
   } catch (error) {
     console.error(`Error updating destination with ID ${id}:`, error);
     throw error;
@@ -83,7 +68,7 @@ export const updateDestination = async (id: number, destinationData: Partial<Des
  */
 export const deleteDestination = async (id: number): Promise<void> => {
   try {
-    await api.delete<ApiResponse<void>>(`destinations/${id}`);
+    await api.delete<void>(`destinations/${id}`);
   } catch (error) {
     console.error(`Error deleting destination with ID ${id}:`, error);
     throw error;
@@ -91,7 +76,7 @@ export const deleteDestination = async (id: number): Promise<void> => {
 };
 
 export default {
-  getAllDestinations,
+  getDestinations,
   getDestinationById,
   createDestination,
   updateDestination,

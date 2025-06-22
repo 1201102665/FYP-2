@@ -38,26 +38,10 @@ export interface FlightSearchParams {
   limit?: number;
 }
 
-export interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  message?: string;
-  search_criteria?: any;
-  total_results?: number;
-  source?: string;
-  timestamp?: string;
-  pagination?: {
-    current_page: number;
-    per_page: number;
-    total_results: number;
-    total_pages: number;
-    has_next_page: boolean;
-    has_prev_page: boolean;
-  };
-}
+
 
 /**
- * Browse all flights from popular routes via Amadeus API with pagination
+ * Browse all flights from database with pagination
  */
 export const getAllFlights = async (page: number = 1, per_page: number = 8): Promise<{ flights: Flight[], pagination: any }> => {
   try {
@@ -76,23 +60,14 @@ export const getAllFlights = async (page: number = 1, per_page: number = 8): Pro
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ Browse API error response:', errorText);
-      
-      // Return fallback data instead of throwing error
-      return {
-        flights: generateFallbackFlights(),
-        pagination: { current_page: page, per_page, total_results: 5, total_pages: 1, has_next_page: false, has_prev_page: false }
-      };
+      throw new Error(`Failed to fetch flights: ${response.status} ${response.statusText}`);
     }
     
     const result = await response.json();
     console.log('📋 Browse API result:', result);
     
-    if (!result.success && result.flights?.length === 0) {
-      console.log('⚠️ API returned no flights, using fallback data');
-      return {
-        flights: generateFallbackFlights(),
-        pagination: { current_page: page, per_page, total_results: 5, total_pages: 1, has_next_page: false, has_prev_page: false }
-      };
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to fetch flights');
     }
     
     return {
@@ -101,69 +76,8 @@ export const getAllFlights = async (page: number = 1, per_page: number = 8): Pro
     };
   } catch (error) {
     console.error('❌ Error browsing flights:', error);
-    // Return fallback data instead of throwing error
-    return {
-      flights: generateFallbackFlights(),
-      pagination: { current_page: page, per_page, total_results: 5, total_pages: 1, has_next_page: false, has_prev_page: false }
-    };
+    throw error;
   }
-};
-
-// Generate fallback flight data for frontend
-const generateFallbackFlights = (): Flight[] => {
-  return [
-    {
-      id: 'fallback_1',
-      airline: 'VietJet Air',
-      flight_number: 'VJ826',
-      origin: 'KUL',
-      destination: 'DAD',
-      origin_airport: 'Kuala Lumpur International Airport',
-      destination_airport: 'Da Nang International Airport',
-      departure_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      arrival_time: new Date(Date.now() + 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000).toISOString(),
-      price: 299,
-      available_seats: 45,
-      airline_logo: 'https://logos.skyscnr.com/images/airlines/favicon/VJ.png',
-      duration: 195, // 3h 15m in minutes
-      class: 'Economy',
-      status: 'scheduled'
-    },
-    {
-      id: 'fallback_2',
-      airline: 'AirAsia',
-      flight_number: 'AK6285',
-      origin: 'KUL',
-      destination: 'DAD',
-      origin_airport: 'Kuala Lumpur International Airport',
-      destination_airport: 'Da Nang International Airport',
-      departure_time: new Date(Date.now() + 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000).toISOString(),
-      arrival_time: new Date(Date.now() + 24 * 60 * 60 * 1000 + 9 * 60 * 60 * 1000).toISOString(),
-      price: 259,
-      available_seats: 32,
-      airline_logo: 'https://logos.skyscnr.com/images/airlines/favicon/AK.png',
-      duration: 195,
-      class: 'Economy',
-      status: 'scheduled'
-    },
-    {
-      id: 'fallback_3',
-      airline: 'Malaysia Airlines',
-      flight_number: 'MH6012',
-      origin: 'KUL',
-      destination: 'DAD',
-      origin_airport: 'Kuala Lumpur International Airport',
-      destination_airport: 'Da Nang International Airport',
-      departure_time: new Date(Date.now() + 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000).toISOString(),
-      arrival_time: new Date(Date.now() + 24 * 60 * 60 * 1000 + 15 * 60 * 60 * 1000).toISOString(),
-      price: 389,
-      available_seats: 28,
-      airline_logo: 'https://logos.skyscnr.com/images/airlines/favicon/MH.png',
-      duration: 195,
-      class: 'Economy',
-      status: 'scheduled'
-    }
-  ];
 };
 
 /**
@@ -174,7 +88,7 @@ export const browseFlights = async (page: number = 1, per_page: number = 8): Pro
 };
 
 /**
- * Search for flights using Amadeus API via Node.js backend
+ * Search for flights using database via Node.js backend
  */
 export const searchFlights = async (searchParams: FlightSearchParams): Promise<Flight[]> => {
   try {
@@ -203,86 +117,75 @@ export const searchFlights = async (searchParams: FlightSearchParams): Promise<F
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ Search API error response:', errorText);
-      
-      // Return fallback data instead of throwing error
-      return generateFallbackFlights();
+      throw new Error(`Search failed: ${response.status} ${response.statusText}`);
     }
     
     const result = await response.json();
     console.log('📋 Search API result:', result);
     
     if (!result.success) {
-      console.log('⚠️ API returned error, using fallback data:', result.message);
-      return generateFallbackFlights();
+      throw new Error(result.message || 'Search failed');
     }
     
-    const flights = result.flights || result.data || [];
-    if (flights.length === 0) {
-      console.log('⚠️ No flights found, using fallback data');
-      return generateFallbackFlights();
-    }
-    
-    return flights;
+    return result.flights || [];
   } catch (error) {
     console.error('❌ Error searching flights:', error);
-    // Return fallback data instead of throwing error
-    return generateFallbackFlights();
+    throw error;
   }
 };
 
 /**
- * Get flights with specific route (using Aviationstack)
+ * Get flights by route
  */
 export const getFlightsByRoute = async (origin: string, destination: string, date?: string): Promise<Flight[]> => {
   try {
-    const searchParams = {
-      origin: origin,
-      destination: destination,
+    const searchParams: FlightSearchParams = {
+      origin,
+      destination,
       departure_date: date,
       limit: 50
     };
     
     return await searchFlights(searchParams);
   } catch (error) {
-    console.error('Error fetching flights by route:', error);
+    console.error('❌ Error getting flights by route:', error);
     throw error;
   }
 };
 
 /**
- * Get a single flight by ID (fallback to search)
- * Note: Aviationstack doesn't support getting single flight by ID,
- * so we'll search and filter
+ * Get a single flight by ID
  */
 export const getFlightById = async (id: string | number): Promise<Flight | null> => {
   try {
-    const flights = await getAllFlights(100);
-    return flights.find(flight => flight.id === id) || null;
+    const response = await api.get<Flight>(`/flights/${id}`);
+    return response;
   } catch (error) {
-    console.error(`Error fetching flight with ID ${id}:`, error);
+    console.error('❌ Error getting flight by ID:', error);
     throw error;
   }
 };
 
 /**
- * Create a new flight (not supported by Aviationstack - would need database)
+ * Create a new flight
  */
 export const createFlight = async (flightData: Omit<Flight, 'id'>): Promise<Flight> => {
-  throw new Error('Creating flights is not supported with Aviationstack API. Use database endpoint instead.');
+  const response = await api.post<Flight>('/flights', flightData);
+  return response;
 };
 
 /**
- * Update an existing flight (not supported by Aviationstack - would need database)
+ * Update a flight
  */
 export const updateFlight = async (id: number, flightData: Partial<Flight>): Promise<void> => {
-  throw new Error('Updating flights is not supported with Aviationstack API. Use database endpoint instead.');
+  await api.put(`/flights/${id}`, flightData);
 };
 
 /**
- * Delete a flight (not supported by Aviationstack - would need database)
+ * Delete a flight
  */
 export const deleteFlight = async (id: number): Promise<void> => {
-  throw new Error('Deleting flights is not supported with Aviationstack API. Use database endpoint instead.');
+  await api.delete(`/flights/${id}`);
 };
 
 export default {

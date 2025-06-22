@@ -1,6 +1,6 @@
 /**
  * Airline Logo Mapping Utility
- * Maps airline codes to logo URLs since Amadeus API doesn't provide logos
+ * Maps airline codes to logo URLs for flight display
  */
 
 const airlineLogos = {

@@ -1,0 +1,68 @@
+AIRLINE LOGO FILENAME REFERENCE
+================================
+
+Upload your airline logos with these exact filenames:
+
+aer-lingus.png (or .jpg/.svg)           → Aer Lingus
+aerolineas-argentinas.png               → Aerolíneas Argentinas
+aeromexico.png                          → Aeroméxico
+air-canada.png                          → Air Canada
+air-france.png                          → Air France
+air-india.png                           → Air India
+air-new-zealand.png                     → Air New Zealand
+airasia.png                             → AirAsia
+alitalia.png                            → Alitalia
+all-nippon-airways.png                  → All Nippon Airways
+american-airlines.png                   → American Airlines
+asiana-airlines.png                     → Asiana Airlines
+azul.png                                → Azul
+batik-air.png                           → Batik Air
+british-airways.png                     → British Airways
+brussels-airlines.png                   → Brussels Airlines
+cathay-pacific.png                      → Cathay Pacific
+cebu-pacific.png                        → Cebu Pacific
+china-eastern.png                       → China Eastern
+china-southern-airlines.png             → China Southern Airlines
+delta-air-lines.png                     → Delta Air Lines
+easyjet.png                             → easyJet
+emirates.png                            → Emirates
+ethiopian-airlines.png                  → Ethiopian Airlines
+etihad-airways.png                      → Etihad Airways
+fiji-airways.png                        → Fiji Airways
+finnair.png                             → Finnair
+garuda-indonesia.png                    → Garuda Indonesia
+hainan-airlines.png                     → Hainan Airlines
+iberia.png                              → Iberia
+indigo.png                              → IndiGo
+japan-airlines.png                      → Japan Airlines
+jetstar.png                             → Jetstar
+kenya-airways.png                       → Kenya Airways
+klm.png                                 → KLM
+korean-air.png                          → Korean Air
+latam-airlines.png                      → LATAM Airlines
+lufthansa.png                           → Lufthansa
+norwegian-air.png                       → Norwegian Air
+oman-air.png                            → Oman Air
+pegasus.png                             → Pegasus
+philippine-airlines.png                 → Philippine Airlines
+qantas.png                              → Qantas
+qatar-airways.png                       → Qatar Airways
+ryanair.png                             → Ryanair
+s7-airlines.png                         → S7 Airlines
+saudia.png                              → Saudia
+scandinavian-airlines.png               → Scandinavian Airlines
+scoot.png                               → Scoot
+shenzhen-airlines.png                   → Shenzhen Airlines
+singapore-airlines.png                  → Singapore Airlines
+south-african-airways.png               → South African Airways
+spicejet.png                            → SpiceJet
+swiss.png                               → SWISS
+thai-airways.png                        → Thai Airways
+turkish-airlines.png                    → Turkish Airlines
+united-airlines.png                     → United Airlines
+vietjet-air.png                         → VietJet Air
+vistara.png                             → Vistara
+wizz-air.png                            → Wizz Air
+
+SUPPORTED FORMATS: .png, .jpg, .jpeg, .svg, .webp
+RECOMMENDED: PNG with transparent background, 64x64px to 128x128px 

@@ -76,7 +76,7 @@ echo.
 echo 🌐 Frontend: http://localhost:5173
 echo 🔧 Backend:  http://localhost:3001/health
 echo.
-echo ✈️  Flight Search: Real Amadeus API
+echo ✈️  Flight Search: MySQL Database
 echo 📊 Status: All systems operational
 echo.
 echo Press any key to open the application...

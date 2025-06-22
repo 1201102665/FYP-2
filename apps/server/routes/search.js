@@ -421,7 +421,6 @@ router.get('/flights', asyncHandler(async (req, res) => {
     arrival_city = '',
     departure_date = '',
     return_date = '',
-    trip_type = 'one-way',
     passengers = 1,
     class_type = 'economy',
     min_price = 0,
@@ -437,80 +436,85 @@ router.get('/flights', asyncHandler(async (req, res) => {
 
   try {
     // Build WHERE clause based on filters
-    const whereConditions = ['status = ?'];
-    const values = ['active'];
+    const whereConditions = ['f.status = ?'];
+    const values = ['scheduled'];
 
     if (departure_city) {
-      whereConditions.push('departure_city LIKE ?');
-      values.push(`%${departure_city}%`);
+      whereConditions.push('(o.name LIKE ? OR o.iata_code LIKE ? OR o.city LIKE ?)');
+      values.push(`%${departure_city}%`, `%${departure_city}%`, `%${departure_city}%`);
     }
 
     if (arrival_city) {
-      whereConditions.push('arrival_city LIKE ?');
-      values.push(`%${arrival_city}%`);
+      whereConditions.push('(d.name LIKE ? OR d.iata_code LIKE ? OR d.city LIKE ?)');
+      values.push(`%${arrival_city}%`, `%${arrival_city}%`, `%${arrival_city}%`);
     }
 
     if (departure_date) {
-      whereConditions.push('DATE(departure_time) = ?');
+      whereConditions.push('DATE(f.departure_time) = ?');
       values.push(departure_date);
     }
 
     if (parseFloat(min_price) > 0) {
-      whereConditions.push('price >= ?');
+      whereConditions.push('f.price_myr >= ?');
       values.push(parseFloat(min_price));
     }
 
     if (parseFloat(max_price) < 999999) {
-      whereConditions.push('price <= ?');
+      whereConditions.push('f.price_myr <= ?');
       values.push(parseFloat(max_price));
     }
 
     if (airline && airline !== 'all') {
-      whereConditions.push('airline = ?');
+      whereConditions.push('a.name = ?');
       values.push(airline);
     }
 
     if (stops && stops !== 'all') {
       if (stops === 'direct') {
-        whereConditions.push('stops = 0');
+        whereConditions.push('f.stops = 0');
       } else {
-        whereConditions.push('stops = ?');
+        whereConditions.push('f.stops = ?');
         values.push(parseInt(stops));
       }
     }
 
     // Build ORDER BY clause
-    let orderBy = 'price ASC, departure_time ASC';
+    let orderBy = 'f.price_myr ASC, f.departure_time ASC';
     switch (sort_by) {
       case 'price_low':
-        orderBy = 'price ASC';
+        orderBy = 'f.price_myr ASC';
         break;
       case 'price_high':
-        orderBy = 'price DESC';
+        orderBy = 'f.price_myr DESC';
         break;
       case 'departure_early':
-        orderBy = 'departure_time ASC';
+        orderBy = 'f.departure_time ASC';
         break;
       case 'departure_late':
-        orderBy = 'departure_time DESC';
+        orderBy = 'f.departure_time DESC';
         break;
       case 'arrival_early':
-        orderBy = 'arrival_time ASC';
+        orderBy = 'f.arrival_time ASC';
         break;
       case 'duration_short':
-        orderBy = 'duration ASC';
+        orderBy = 'f.duration_minutes ASC';
         break;
     }
 
     const whereClause = whereConditions.join(' AND ');
     
-    // Get flights
+    // Get flights with proper JOINs
     const flights = await db.query(`
       SELECT 
-        id, flight_number, airline, departure_city, arrival_city,
-        departure_time, arrival_time, duration, price, stops,
-        aircraft_type, class_type, created_at
-      FROM flights 
+        f.id, f.flight_number, a.name as airline, a.logo_url as airline_logo,
+        o.name as departure_airport, o.iata_code as departure_code, o.city as departure_city,
+        d.name as arrival_airport, d.iata_code as arrival_code, d.city as arrival_city,
+        f.departure_time, f.arrival_time, f.duration_minutes, f.price_myr as price,
+        f.stops, f.aircraft_type, f.travel_class, f.created_at
+      FROM flights f 
+      JOIN airlines a ON f.airline_id = a.id
+      JOIN airports o ON f.origin_airport_id = o.id
+      JOIN airports d ON f.destination_airport_id = d.id
       WHERE ${whereClause} 
       ORDER BY ${orderBy} 
       LIMIT ? OFFSET ?
@@ -518,7 +522,12 @@ router.get('/flights', asyncHandler(async (req, res) => {
 
     // Get total count for pagination
     const countResult = await db.queryOne(`
-      SELECT COUNT(*) as total FROM flights WHERE ${whereClause}
+      SELECT COUNT(*) as total 
+      FROM flights f 
+      JOIN airlines a ON f.airline_id = a.id
+      JOIN airports o ON f.origin_airport_id = o.id
+      JOIN airports d ON f.destination_airport_id = d.id
+      WHERE ${whereClause}
     `, values);
 
     // Format flights data
@@ -526,15 +535,21 @@ router.get('/flights', asyncHandler(async (req, res) => {
       id: parseInt(flight.id),
       flight_number: flight.flight_number,
       airline: flight.airline,
+      airline_logo: flight.airline_logo,
       departure_city: flight.departure_city,
+      departure_airport: flight.departure_airport,
+      departure_code: flight.departure_code,
       arrival_city: flight.arrival_city,
+      arrival_airport: flight.arrival_airport,
+      arrival_code: flight.arrival_code,
       departure_time: flight.departure_time,
       arrival_time: flight.arrival_time,
-      duration: flight.duration,
+      duration: `${Math.floor(flight.duration_minutes / 60)}h ${flight.duration_minutes % 60}m`,
+      duration_minutes: parseInt(flight.duration_minutes),
       price: parseFloat(flight.price),
       stops: parseInt(flight.stops),
       aircraft_type: flight.aircraft_type,
-      class_type: flight.class_type,
+      travel_class: flight.travel_class,
       created_at: flight.created_at
     }));
 
@@ -544,7 +559,7 @@ router.get('/flights', asyncHandler(async (req, res) => {
         departure_city,
         arrival_city,
         departure_date,
-        trip_type,
+        return_date,
         passengers,
         user_agent: req.get('User-Agent')
       });
@@ -566,7 +581,6 @@ router.get('/flights', asyncHandler(async (req, res) => {
           arrival_city,
           departure_date,
           return_date,
-          trip_type,
           passengers: parseInt(passengers),
           class_type,
           min_price: parseFloat(min_price),
@@ -582,7 +596,8 @@ router.get('/flights', asyncHandler(async (req, res) => {
     console.error('Flight search error:', error);
     res.status(500).json({
       success: false,
-      message: 'Error searching flights'
+      message: 'Error searching flights',
+      error: error.message
     });
   }
 }));

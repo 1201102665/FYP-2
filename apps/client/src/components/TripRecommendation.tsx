@@ -37,23 +37,22 @@ interface TripRecommendationProps {
 
 const TripRecommendation: React.FC<TripRecommendationProps> = ({ trip, onNewTrip }) => {
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addItem } = useCart();
   const { toast } = useToast();
 
   const handleAddToCart = () => {
-    addToCart({
+    addItem({
       id: Date.now().toString(),
       name: `${trip.destination} Trip Package`,
       image: `https://source.unsplash.com/featured/?${trip.destination}`,
       price: trip.totalPrice,
-      quantity: 1,
-      type: 'package'
-    });
-
-    toast({
-      title: "Added to Cart",
-      description: "Your trip package has been added to your cart.",
-      variant: "default"
+      type: 'package',
+      details: {
+        destination: trip.destination,
+        travelers: trip.travelers,
+        dateRange: trip.dateRange,
+        accommodation: trip.accommodation.name
+      }
     });
   };
 

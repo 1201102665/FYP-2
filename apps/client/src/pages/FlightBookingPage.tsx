@@ -29,7 +29,7 @@ const FlightBookingPage = () => {
     nameOnCard: ''
   });
 
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Get flight details from location state or use defaults
   const flightDetails = location.state || {
@@ -74,7 +74,7 @@ const FlightBookingPage = () => {
   };
 
   const validateForm = () => {
-    const newErrors = {};
+    const newErrors: Record<string, string> = {};
 
     // Validate passenger details
     if (!passengerDetails.name) newErrors.name = 'Name is required';

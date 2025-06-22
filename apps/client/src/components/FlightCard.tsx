@@ -17,6 +17,7 @@ interface FlightCardProps {
   direct: boolean;
   price: number;
   currency: string;
+  travelClass?: string;
 }
 
 const FlightCard: React.FC<FlightCardProps> = ({
@@ -30,7 +31,8 @@ const FlightCard: React.FC<FlightCardProps> = ({
   arrivalAirport,
   direct,
   price,
-  currency
+  currency,
+  travelClass = 'Economy'
 }) => {
   const navigate = useNavigate();
   const { addItemWithCustomToast, items } = useCart();
@@ -128,7 +130,7 @@ const FlightCard: React.FC<FlightCardProps> = ({
             
             <div className="text-sm md:text-base text-center md:text-left" data-id="6lh4f0q90" data-path="src/components/FlightCard.tsx">
               <p data-id="2ugglvbu8" data-path="src/components/FlightCard.tsx">{departureAirport} - {arrivalAirport}</p>
-              <p data-id="7wcd8h1p6" data-path="src/components/FlightCard.tsx">{airline}</p>
+              <p data-id="7wcd8h1p6" data-path="src/components/FlightCard.tsx">{airline} • {travelClass}</p>
             </div>
           </div>
         </div>

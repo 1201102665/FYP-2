@@ -112,8 +112,8 @@ export const validateFlightSearch = [
     .withMessage('Passengers must be between 1 and 20'),
   body('class')
     .optional()
-    .isIn(['economy', 'business', 'first'])
-    .withMessage('Class must be economy, business, or first'),
+    .isIn(['Economy', 'Business', 'First', 'economy', 'business', 'first'])
+    .withMessage('Class must be Economy, Business, or First'),
   handleValidationErrors
 ];
 
