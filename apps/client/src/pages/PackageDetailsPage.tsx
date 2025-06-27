@@ -19,7 +19,28 @@ const PackageDetailsPage: React.FC = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [packageData, setPackageData] = useState<any>(null);
+  const [packageData, setPackageData] = useState<{
+    id: number;
+    name: string;
+    description?: string;
+    destination?: string;
+    destination_city?: string;
+    duration_days?: number;
+    base_price?: number;
+    price?: number;
+    featured?: boolean;
+    images?: string[];
+    imageUrls?: string[];
+    includes?: string[];
+    excludes?: string[];
+    highlights?: string[];
+    itinerary?: Array<{
+      day?: number;
+      title?: string;
+      description?: string;
+      activities?: string[];
+    }>;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +80,7 @@ const PackageDetailsPage: React.FC = () => {
 
   // Map backend fields to component expectations with fallbacks
   const displayData = {
+    id: packageData.id,
     title: packageData.name || 'Package Name',
     description: packageData.description || 'No description available',
     destination: packageData.destination || 'Unknown destination',
@@ -386,8 +408,8 @@ const PackageDetailsPage: React.FC = () => {
                   <ReviewsSection
                     itemType="package"
                     itemId={displayData.id}
-                    itemName={displayData.name}
-                    itemImage={displayData.image}
+                    itemName={displayData.title}
+                    // itemImage={displayData.image}
                     showReviewButton={true}
                   />
                 </TabsContent>
