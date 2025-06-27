@@ -14,9 +14,12 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   signup: (name: string, email: string, password: string, phone: string) => Promise<boolean>;
   logout: () => void;
+  getToken: () => string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const API_BASE_URL = 'http://localhost:3001';
 
 export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -26,7 +29,8 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
   // Check for saved auth state on initialization
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
-    if (savedUser) {
+    const token = localStorage.getItem('token');
+    if (savedUser && token) {
       try {
         const parsedUser = JSON.parse(savedUser);
         setUser(parsedUser);
@@ -34,6 +38,9 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
       } catch (e) {
         console.error('Failed to parse stored user:', e);
         localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        setUser(null);
+        setIsAuthenticated(false);
       }
     }
   }, []);
@@ -50,8 +57,8 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
         return false;
       }
 
-      // Call the PHP backend API
-      const response = await fetch('/api/auth/login', {
+      // Call the backend API
+      const response = await fetch('http://localhost:3001/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,7 +83,10 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
         return false;
       }
 
-      if (data.success) {
+      if (data.success && data.token) {
+        // Store the token
+        localStorage.setItem('token', data.token);
+        
         // Create user object from response
         const loggedInUser = {
           id: data.user.id.toString(),
@@ -129,10 +139,9 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
       }
 
       console.log('AuthContext: Starting signup process...');
-      console.log('AuthContext: Attempting signup with data:', { name, email, phone });
 
-      // Call the PHP backend API
-      const response = await fetch('/api/auth/register', {
+      // Call the backend API with correct URL
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -145,15 +154,7 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
         })
       });
 
-      console.log('AuthContext: Response received');
-      console.log('AuthContext: Response status:', response.status);
-      console.log('AuthContext: Response ok:', response.ok);
-      console.log('AuthContext: Response headers:', Object.fromEntries(response.headers.entries()));
-
-      // Handle different response statuses
       if (response.status === 409) {
-        console.log('AuthContext: 409 Conflict - Email already exists');
-        // Duplicate email case
         toast({
           title: "Email Already Exists",
           description: "This email address is already registered. Please try logging in instead.",
@@ -162,19 +163,10 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
         return false;
       }
 
+      const data = await response.json();
+
       if (!response.ok) {
-        let errorMsg = `Server error: ${response.status} ${response.statusText}`;
-        try {
-          const errorData = await response.json();
-          if (errorData?.message) {
-            errorMsg = errorData.message;
-          } else if (errorData?.error?.details?.[0]?.message) {
-            errorMsg = errorData.error.details[0].message;
-          }
-        } catch (e) {
-          // Ignore JSON parse errors, use default errorMsg
-        }
-        console.error('AuthContext: HTTP error:', response.status, response.statusText, errorMsg);
+        const errorMsg = data?.message || `Server error: ${response.status}`;
         toast({
           title: "Registration Failed",
           description: errorMsg,
@@ -183,46 +175,30 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
         return false;
       }
 
-      let data;
-      try {
-        data = await response.json();
-        console.log('AuthContext: JSON parsed successfully');
-        console.log('AuthContext: Response data:', data);
-      } catch (parseError) {
-        console.error('AuthContext: Failed to parse JSON response:', parseError);
-        toast({
-          title: "Registration Failed",
-          description: "Server returned invalid response.",
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      if (data.success) {
-        console.log('AuthContext: Backend reports success!');
-        console.log('AuthContext: User ID from backend:', data.user_id);
+      if (data.success && data.token) {
+        // Store the token immediately after successful registration
+        localStorage.setItem('token', data.token);
         
         // Create user object from response
         const newUser = {
-          id: data.user_id.toString(),
-          name,
-          email,
+          id: data.user.id.toString(),
+          name: data.user.name,
+          email: data.user.email,
           avatar: `https://i.pravatar.cc/150?u=${email}`
         };
-
-        console.log('AuthContext: Created user object:', newUser);
 
         setUser(newUser);
         setIsAuthenticated(true);
         localStorage.setItem('user', JSON.stringify(newUser));
 
-        console.log('AuthContext: User state updated, authentication set to true');
-        console.log('AuthContext: Returning true for successful signup');
+        toast({
+          title: "Registration Successful",
+          description: "Your account has been created successfully!",
+          variant: "default"
+        });
 
         return true;
       } else {
-        console.error('AuthContext: Backend returned success: false');
-        console.error('AuthContext: Backend error message:', data.message);
         toast({
           title: "Registration Failed",
           description: data.message || "Failed to create account.",
@@ -231,33 +207,12 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
         return false;
       }
     } catch (error) {
-      console.error('AuthContext: Exception caught during signup:', error);
-      console.error('AuthContext: Error type:', typeof error);
-      console.error('AuthContext: Error constructor:', error.constructor.name);
-      
-      // More specific error handling
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        console.log('AuthContext: Fetch/network error detected');
-        toast({
-          title: "Connection Error",
-          description: "Cannot connect to server. Please check your internet connection.",
-          variant: "destructive"
-        });
-      } else if (error instanceof SyntaxError) {
-        console.log('AuthContext: JSON parsing error detected');
-        toast({
-          title: "Registration Failed",
-          description: "Server returned invalid response. Please try again.",
-          variant: "destructive"
-        });
-      } else {
-        console.log('AuthContext: Unknown error detected');
-        toast({
-          title: "Registration Failed",
-          description: "An unexpected error occurred. Please try again.",
-          variant: "destructive"
-        });
-      }
+      console.error('Signup error:', error);
+      toast({
+        title: "Registration Failed",
+        description: "Network error occurred. Please try again.",
+        variant: "destructive"
+      });
       return false;
     }
   };
@@ -266,6 +221,7 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
     toast({
       title: "Logged Out",
       description: "You have been successfully logged out.",
@@ -273,11 +229,22 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
     });
   };
 
-  return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, signup, logout }} data-id="od1a7zfbf" data-path="src/contexts/AuthContext.tsx">
-      {children}
-    </AuthContext.Provider>);
+  const getToken = () => {
+    return localStorage.getItem('token');
+  };
 
+  return (
+    <AuthContext.Provider value={{ 
+      user, 
+      isAuthenticated, 
+      login, 
+      signup, 
+      logout,
+      getToken 
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {

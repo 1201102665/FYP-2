@@ -48,6 +48,7 @@ import CheckoutProgress from "@/components/CheckoutProgress";
 import { getDestinations } from "@/services/destinationService";
 import type { Car } from '@/services/carService';
 import type { PackageCardProps } from '@/components/PackageCard';
+import { useUserActivity } from '@/hooks/use-user-activity';
 
 // Define types for recommendations
 interface FlightRecommendation {
@@ -80,7 +81,7 @@ interface HotelRecommendation {
 }
 
 const HomePage = () => {
-  const { trackView } = useUserActivityContext();
+  const { trackView } = useUserActivity();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -117,7 +118,9 @@ const HomePage = () => {
   }, []);
 
   useEffect(() => {
-    trackView('homepage', 'destination');
+    if (trackView) {
+      trackView('homepage-main', 'destination');
+    }
   }, [trackView]);
 
   useEffect(() => {
@@ -259,10 +262,10 @@ const HomePage = () => {
   };
 
   const quickActions = [
-    { name: "Flights", icon: Plane, path: "/flights", color: "bg-blue-500", count: "2.5M+ flights" },
-    { name: "Hotels", icon: Hotel, path: "/hotels", color: "bg-green-500", count: "1.8M+ hotels" },
-    { name: "Cars", icon: CarIcon, path: "/car-rentals", color: "bg-purple-500", count: "50K+ cars" },
-    { name: "Packages", icon: Package, path: "/packages", color: "bg-orange-500", count: "15K+ packages" },
+    { name: "Flights", icon: Plane, path: "/flights", color: "bg-blue-500" },
+    { name: "Hotels", icon: Hotel, path: "/hotels", color: "bg-green-500" },
+    { name: "Cars", icon: CarIcon, path: "/car-rentals", color: "bg-purple-500" },
+    { name: "Packages", icon: Package, path: "/packages", color: "bg-orange-500" },
   ];
 
   const features = [
@@ -463,7 +466,6 @@ const HomePage = () => {
                         <action.icon className="h-8 w-8 text-white" />
                       </div>
                       <h3 className="text-xl font-semibold text-gray-900 mb-2">{action.name}</h3>
-                      <p className="text-gray-600 text-sm">{action.count}</p>
                       <ArrowRight className="h-5 w-5 text-gray-400 mx-auto mt-3 group-hover:text-aerotrav-blue transition-colors" />
                     </CardContent>
                   </Card>

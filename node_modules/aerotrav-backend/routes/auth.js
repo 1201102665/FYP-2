@@ -69,13 +69,24 @@ router.post('/register', (req, res, next) => {
 
 // User Login (converted from login_submit.php)
 router.post('/login', validateUserLogin, asyncHandler(async (req, res) => {
+  console.log('Login attempt:', { email: req.body.email });
   const { email, password } = req.body;
+
+  if (!email || !password) {
+    console.log('Missing credentials');
+    return res.status(400).json({
+      success: false,
+      message: 'Email and password are required'
+    });
+  }
 
   // Get user by email
   const user = await db.queryOne(
     'SELECT id, name, email, password, role, status FROM users WHERE email = ?',
     [email]
   );
+
+  console.log('User found:', user ? 'yes' : 'no');
 
   if (!user) {
     return res.status(401).json({
@@ -86,6 +97,7 @@ router.post('/login', validateUserLogin, asyncHandler(async (req, res) => {
 
   // Check if user is active
   if (user.status !== 'active') {
+    console.log('User not active:', user.status);
     return res.status(401).json({
       success: false,
       message: 'Account is not active. Please contact support.'
@@ -94,6 +106,8 @@ router.post('/login', validateUserLogin, asyncHandler(async (req, res) => {
 
   // Verify password
   const isValidPassword = await verifyPassword(password, user.password);
+  console.log('Password valid:', isValidPassword);
+  
   if (!isValidPassword) {
     return res.status(401).json({
       success: false,
@@ -101,28 +115,37 @@ router.post('/login', validateUserLogin, asyncHandler(async (req, res) => {
     });
   }
 
-  // Generate token
-  const token = generateToken(user);
+  try {
+    // Generate token
+    const token = generateToken(user);
+    console.log('Token generated successfully');
 
-  // Log activity
-  const sessionId = generateSessionId(req);
-  await logUserActivity(user.id, sessionId, 'user_login', {
-    ip_address: req.ip,  
-    user_agent: req.get('User-Agent')
-  });
+    // Log activity
+    const sessionId = generateSessionId(req);
+    await logUserActivity(user.id, sessionId, 'user_login', {
+      ip_address: req.ip,  
+      user_agent: req.get('User-Agent')
+    });
 
-  res.json({
-    success: true,
-    message: 'Login successful',
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      status: user.status
-    },
-    token
-  });
+    res.json({
+      success: true,
+      message: 'Login successful',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status
+      },
+      token
+    });
+  } catch (error) {
+    console.error('Error during login:', error);
+    res.status(500).json({
+      success: false,
+      message: 'An error occurred during login'
+    });
+  }
 }));
 
 // Get current user profile

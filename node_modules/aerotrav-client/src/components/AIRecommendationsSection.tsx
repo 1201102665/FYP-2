@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Heart, MapPin, Clock, Star, TrendingUp } from 'lucide-react';
-import { getDestinations } from '@/services/destinationService';
-import { getPackages } from '@/services/packageService';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface RecommendationCardProps {
   id: number;
@@ -77,57 +77,67 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
 };
 
 const AIRecommendationsSection: React.FC = () => {
-  const [destinations, setDestinations] = useState<any[]>([]);
-  const [packages, setPackages] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<RecommendationCardProps[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { isAuthenticated } = useAuth();
+  const { toast } = useToast();
+
+  const fetchRecommendations = async (showToast = false) => {
+    try {
+      setIsRefreshing(true);
+      const response = await fetch('/api/ai/recommendations');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch recommendations');
+      }
+
+      const data = await response.json();
+      
+      // Transform the AI recommendations into the correct format
+      const transformedRecommendations = data.recommendations.map((rec: any) => ({
+        id: rec.id,
+        title: rec.name || rec.title,
+        subtitle: rec.description?.substring(0, 50) + '...' || rec.location || 'Amazing destination',
+        image: rec.image_url || `https://source.unsplash.com/random/400x200/?travel,${rec.name}`,
+        rating: rec.rating || 4.5,
+        price: rec.price || rec.base_price || 899,
+        tags: rec.tags || rec.categories || ['Recommended', 'AI Pick'],
+        type: rec.type || 'destination'
+      }));
+
+      setRecommendations(transformedRecommendations);
+
+      if (showToast) {
+        toast({
+          title: "Recommendations Updated",
+          description: "Your personalized recommendations have been refreshed.",
+          variant: "default"
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching AI recommendations:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch recommendations. Please try again.",
+        variant: "destructive"
+      });
+      setRecommendations([]);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [destinationsResponse, packagesResponse] = await Promise.all([
-          getDestinations(),
-          getPackages()
-        ]);
-        // Use .data if the response is an object with a data property, otherwise fallback
-        const destinationsArray = Array.isArray(destinationsResponse.data) ? destinationsResponse.data : destinationsResponse;
-        const packagesArray = Array.isArray(packagesResponse.data) ? packagesResponse.data : packagesResponse;
-        setDestinations(destinationsArray);
-        setPackages(packagesArray);
-      } catch (error) {
-        console.error('Error fetching recommendations data:', error);
-        setDestinations([]);
-        setPackages([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (isAuthenticated) {
+      fetchRecommendations();
+    }
+  }, [isAuthenticated]);
 
-    fetchData();
-  }, []);
-
-  // Transform data for recommendations
-  const recommendations: RecommendationCardProps[] = [
-    ...(Array.isArray(destinations) ? destinations.slice(0, 4).map((dest, index) => ({
-      id: dest.id,
-      title: dest.name,
-      subtitle: dest.description?.substring(0, 50) + '...' || 'Amazing destination',
-      image: dest.image || `https://images.unsplash.com/photo-${1500000000000 + index}?w=400&h=200&fit=crop`,
-      rating: dest.rating || 4.5,
-      price: dest.price || 899,
-      tags: ['Popular', 'Trending'],
-      type: 'destination' as const
-    })) : []),
-    ...(Array.isArray(packages) ? packages.slice(0, 2).map((pkg, index) => ({
-      id: pkg.id,
-      title: pkg.name,
-      subtitle: pkg.destinations?.join(', ') || pkg.description?.substring(0, 50) + '...' || 'Travel package',
-      image: pkg.image || `https://images.unsplash.com/photo-${1600000000000 + index}?w=400&h=200&fit=crop`,
-      rating: pkg.rating || 4.3,
-      price: pkg.price || 1299,
-      tags: pkg.included_services?.slice(0, 2) || ['All-inclusive', 'Premium'],
-      type: 'package' as const
-    })) : [])
-  ];
+  const handleRefresh = () => {
+    fetchRecommendations(true);
+  };
 
   if (isLoading) {
     return (
@@ -163,6 +173,26 @@ const AIRecommendationsSection: React.FC = () => {
     );
   }
 
+  if (!isAuthenticated) {
+    return (
+      <Card className="border-none shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-xl font-bold flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            AI-Powered Recommendations
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-gray-500">
+            <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Please log in to see personalized recommendations.</p>
+            <p className="text-sm">We'll use your preferences to suggest the perfect travel options!</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="border-none shadow-sm">
       <CardHeader className="pb-3">
@@ -190,9 +220,14 @@ const AIRecommendationsSection: React.FC = () => {
         )}
         
         <div className="mt-6 text-center">
-          <Button variant="outline" className="bg-white hover:bg-gray-50">
+          <Button 
+            variant="outline" 
+            className="bg-white hover:bg-gray-50"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
             <Clock className="h-4 w-4 mr-2" />
-            Refresh Recommendations
+            {isRefreshing ? 'Refreshing...' : 'Refresh Recommendations'}
           </Button>
         </div>
       </CardContent>

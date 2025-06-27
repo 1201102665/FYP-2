@@ -35,6 +35,7 @@ import userRoutes from './routes/users.js';
 import adminRoutes from './routes/admin.js';
 import searchRoutes from './routes/search.js';
 import destinationRoutes from './routes/destinations.js';
+import preferencesRoutes from './routes/preferences.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -68,9 +69,7 @@ app.use(limiter);
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.NODE_ENV === 'development' 
-    ? ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000']
-    : process.env.CORS_ORIGIN,
+  origin: ['http://localhost:5173', 'http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -113,6 +112,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/destinations', destinationRoutes);
+app.use('/api/preferences', preferencesRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

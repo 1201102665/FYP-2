@@ -1,24 +1,63 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import useUserActivity, { UserActivity } from '@/hooks/use-user-activity';
 
+interface UserPreferences {
+  preferredActivities: string[];
+  favoriteDestinations: string[];
+  budgetRange: [number, number];
+  travelStyle: string[];
+}
+
 interface UserActivityContextType {
-  userActivity: UserActivity;
+  userActivity: {
+    preferences: UserPreferences;
+  };
   trackSearch: (destination: string, date: string, type: 'flight' | 'hotel' | 'car' | 'package') => void;
   trackView: (itemId: string, type: 'flight' | 'hotel' | 'car' | 'package' | 'destination') => void;
   trackBooking: (itemId: string, type: 'flight' | 'hotel' | 'car' | 'package', destination: string) => void;
-  updatePreferences: (preferences: Partial<UserActivity['preferences']>) => void;
+  updatePreferences: (preferences: UserPreferences) => void;
 }
 
-const UserActivityContext = createContext<UserActivityContextType | undefined>(undefined);
+const defaultPreferences: UserPreferences = {
+  preferredActivities: [],
+  favoriteDestinations: [],
+  budgetRange: [0, 5000],
+  travelStyle: []
+};
 
-export const UserActivityProvider: React.FC<{children: ReactNode;}> = ({ children }) => {
+const UserActivityContext = createContext<UserActivityContextType>({
+  userActivity: {
+    preferences: defaultPreferences
+  },
+  trackSearch: () => {},
+  trackView: () => {},
+  trackBooking: () => {},
+  updatePreferences: () => {}
+});
+
+export const UserActivityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const userActivityHook = useUserActivity();
+  const [preferences, setPreferences] = useState<UserPreferences>(defaultPreferences);
+
+  const updatePreferences = useCallback((newPreferences: UserPreferences) => {
+    setPreferences(newPreferences);
+  }, []);
+
+  const value = {
+    userActivity: {
+      preferences
+    },
+    trackSearch: userActivityHook.trackSearch,
+    trackView: userActivityHook.trackView,
+    trackBooking: userActivityHook.trackBooking,
+    updatePreferences
+  };
 
   return (
-    <UserActivityContext.Provider value={userActivityHook} data-id="1xpxlxi23" data-path="src/contexts/UserActivityContext.tsx">
+    <UserActivityContext.Provider value={value} data-id="1xpxlxi23" data-path="src/contexts/UserActivityContext.tsx">
       {children}
-    </UserActivityContext.Provider>);
-
+    </UserActivityContext.Provider>
+  );
 };
 
 export const useUserActivityContext = () => {

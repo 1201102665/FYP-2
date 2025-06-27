@@ -6,8 +6,28 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { getDestinations } from '@/services/destinationService';
 import { getPackages } from '@/services/packageService';
 
+// Define proper types for our data
+interface AnalyticsDataPoint {
+  month: string;
+  bookings: number;
+  revenue: number;
+  satisfaction: number;
+}
+
+interface Destination {
+  id: string | number;
+  name: string;
+  rating: number;
+}
+
+interface Package {
+  id: string | number;
+  name: string;
+  reviews_count: number;
+}
+
 // Sample analytics data - in a real app this would come from your analytics service
-const analyticsData = [
+const analyticsData: AnalyticsDataPoint[] = [
   { month: 'Jan', bookings: 45, revenue: 12000, satisfaction: 4.2 },
   { month: 'Feb', bookings: 52, revenue: 15000, satisfaction: 4.3 },
   { month: 'Mar', bookings: 48, revenue: 13500, satisfaction: 4.1 },
@@ -17,21 +37,31 @@ const analyticsData = [
 ];
 
 const PerformanceInsights: React.FC = () => {
-  const [destinations, setDestinations] = useState<any[]>([]);
-  const [packages, setPackages] = useState<any[]>([]);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [packages, setPackages] = useState<Package[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
         const [destinationsData, packagesData] = await Promise.all([
           getDestinations(),
           getPackages()
         ]);
-        setDestinations(destinationsData);
-        setPackages(packagesData);
+
+        // Ensure we have arrays and validate the data
+        const validDestinations = Array.isArray(destinationsData) ? destinationsData : [];
+        const validPackages = Array.isArray(packagesData) ? packagesData : [];
+
+        setDestinations(validDestinations);
+        setPackages(validPackages);
       } catch (error) {
         console.error('Error fetching performance data:', error);
+        setError('Failed to load performance data');
+        // Initialize with empty arrays on error
         setDestinations([]);
         setPackages([]);
       } finally {
@@ -42,27 +72,43 @@ const PerformanceInsights: React.FC = () => {
     fetchData();
   }, []);
 
-  // Calculate metrics
+  // Calculate metrics only if we have data
   const totalBookings = analyticsData.reduce((sum, month) => sum + month.bookings, 0);
   const totalRevenue = analyticsData.reduce((sum, month) => sum + month.revenue, 0);
   const avgSatisfaction = analyticsData.reduce((sum, month) => sum + month.satisfaction, 0) / analyticsData.length;
-  const bookingTrend = analyticsData[analyticsData.length - 1].bookings - analyticsData[analyticsData.length - 2].bookings;
+  const bookingTrend = analyticsData.length >= 2 
+    ? analyticsData[analyticsData.length - 1].bookings - analyticsData[analyticsData.length - 2].bookings
+    : 0;
 
-  // Calculate top destinations by rating
-  const topDestinations = destinations
-    .sort((a, b) => (b.rating || 0) - (a.rating || 0))
-    .slice(0, 5);
+  // Calculate top destinations by rating with proper type checking
+  const topDestinations = destinations.length > 0
+    ? [...destinations]
+        .filter(dest => dest && typeof dest.rating === 'number')
+        .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+        .slice(0, 5)
+    : [];
 
-  // Calculate popular packages
-  const popularPackages = packages
-    .sort((a, b) => (b.reviews_count || 0) - (a.reviews_count || 0))
-    .slice(0, 3);
+  // Calculate popular packages with proper type checking
+  const popularPackages = packages.length > 0
+    ? [...packages]
+        .filter(pkg => pkg && typeof pkg.reviews_count === 'number')
+        .sort((a, b) => (b.reviews_count || 0) - (a.reviews_count || 0))
+        .slice(0, 3)
+    : [];
 
   if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="animate-pulse bg-gray-200 h-32 rounded-lg"></div>
         <div className="animate-pulse bg-gray-200 h-64 rounded-lg"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-4 text-red-500">
+        <p>{error}</p>
       </div>
     );
   }

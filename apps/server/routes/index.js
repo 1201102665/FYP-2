@@ -9,6 +9,7 @@ import packageRoutes from './packages.js';
 import reviewRoutes from './reviews.js';
 import paymentRoutes from './payments.js';
 import aiRoutes from './ai.js';
+import preferencesRoutes from './preferences.js';
 
 const router = express.Router();
 
@@ -23,5 +24,6 @@ router.use('/packages', packageRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/ai', aiRoutes);
+router.use('/preferences', preferencesRoutes);
 
 export default router; 
