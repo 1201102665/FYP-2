@@ -11,13 +11,13 @@ import FlightCard from '@/components/FlightCard';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Breadcrumb from '@/components/Breadcrumb';
 import { getAllFlights, searchFlights, browseFlights } from '@/services/flightService';
-import { 
-  Calendar, 
-  MapPin, 
-  Users, 
-  Plane, 
-  Filter, 
-  SortAsc, 
+import {
+  Calendar,
+  MapPin,
+  Users,
+  Plane,
+  Filter,
+  SortAsc,
   Clock,
   Fuel,
   Wifi,
@@ -28,6 +28,7 @@ import {
   ArrowUpDown,
   Search
 } from 'lucide-react';
+import AddToCartButton from '@/components/AddToCartButton';
 
 const FlightResultsPage = () => {
   console.log('FlightResultsPage component rendering...');
@@ -69,13 +70,13 @@ const FlightResultsPage = () => {
   // Fetch flights from database
   useEffect(() => {
     let isMounted = true; // Prevent state updates if component unmounts
-    
+
     const fetchFlights = async () => {
       try {
         if (!isMounted) return;
         setIsLoading(true);
         setError(null);
-        
+
         // Reset to page 1 if search parameters changed (not just page change)
         // Check if we have specific search criteria
         const hasSearchCriteria = searchParams.origin && searchParams.destination;
@@ -83,23 +84,21 @@ const FlightResultsPage = () => {
         if (hasSearchCriteria && currentPage === 1) {
           // Search mode, ensure we start from page 1
         }
-        
-        console.log('Flight search mode:', { 
-          hasSearchCriteria, 
-          origin: searchParams.origin, 
-          destination: searchParams.destination 
+
+        console.log('Flight search mode:', {
+          hasSearchCriteria,
+          origin: searchParams.origin,
+          destination: searchParams.destination
         });
-        
+
         let flightResults = [];
-        
+
         if (!hasSearchCriteria) {
           // Browse mode - show all available flights from popular routes
           console.log('Browse mode: Loading flights from popular routes...');
           try {
-            const response = await fetch('/api/flights/browse?page=1&per_page=200');
-            const browseResult = await response.json();
-            
-            if (browseResult.success && browseResult.flights) {
+            const browseResult = await browseFlights(1, 200);
+            if (browseResult && browseResult.flights) {
               flightResults = browseResult.flights;
               console.log('Browse mode: Loaded', flightResults.length, 'flights');
               console.log('Browse mode: First flight:', flightResults[0]);
@@ -118,7 +117,7 @@ const FlightResultsPage = () => {
             // First try to extract code from parentheses like "Singapore (SIN)"
             const match = input.match(/\(([^)]+)\)/);
             if (match) return match[1];
-            
+
             // If no parentheses, try to match common airport codes
             const upperInput = input.toUpperCase();
             if (upperInput.includes('SINGAPORE') || upperInput.includes('SIN')) return 'SIN';
@@ -127,18 +126,18 @@ const FlightResultsPage = () => {
             if (upperInput.includes('BANGKOK') || upperInput.includes('BKK')) return 'BKK';
             if (upperInput.includes('HANOI') || upperInput.includes('HAN')) return 'HAN';
             if (upperInput.includes('HO CHI MINH') || upperInput.includes('SGN')) return 'SGN';
-            
+
             // If it's already a 3-letter code, use it
             if (/^[A-Z]{3}$/.test(upperInput)) return upperInput;
-            
+
             return upperInput;
           };
-          
+
           const originCode = extractAirportCode(searchParams.origin);
           const destinationCode = extractAirportCode(searchParams.destination);
-          
+
           console.log('Search mode: Extracted codes:', { originCode, destinationCode });
-          
+
           const searchQuery = {
             origin: originCode,
             destination: destinationCode,
@@ -148,36 +147,12 @@ const FlightResultsPage = () => {
             class: searchParams.class || 'Economy',
             limit: 200
           };
-          
+
           console.log('Search mode: Searching flights with params:', searchQuery);
-          
+
           try {
-            // Use the POST search endpoint with proper trip type
-            const response = await fetch('/api/flights/search', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-              },
-              body: JSON.stringify(searchQuery)
-            });
-            
-            console.log('📡 Search API response status:', response.status, response.statusText);
-            
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error('❌ Search API error response:', errorText);
-              throw new Error(`Search failed: ${response.status} ${response.statusText}`);
-            }
-            
-            const result = await response.json();
-            console.log('📋 Search API result:', result);
-            
-            if (!result.success) {
-              throw new Error(result.message || 'Search failed');
-            }
-            
-            flightResults = result.flights || [];
+            // Use the flightService search function
+            flightResults = await searchFlights(searchQuery);
             console.log('Search mode: Found', flightResults.length, 'flights');
           } catch (error) {
             console.error('Search failed:', error);
@@ -185,18 +160,16 @@ const FlightResultsPage = () => {
             return;
           }
         }
-        
+
         if (!isMounted) return; // Check again before setting state
-        
+
         // Transform database data to match our component's expected format
         const transformedFlights = flightResults.map((flight, index) => {
-          // Handle both field name variations from different API endpoints
-          const departureDateTime = flight.departure_datetime || flight.departure_time;
-          const arrivalDateTime = flight.arrival_datetime || flight.arrival_time;
-          
-          // Calculate duration if not provided
-          let duration = flight.duration || 'N/A';
-          if (departureDateTime && arrivalDateTime && duration === 'N/A') {
+          const departureDateTime = flight.departure_time;
+          const arrivalDateTime = flight.arrival_time;
+
+          let duration = flight.duration ? `${flight.duration}h` : 'N/A';
+          if (departureDateTime && arrivalDateTime && !flight.duration) {
             const depTime = new Date(departureDateTime);
             const arrTime = new Date(arrivalDateTime);
             const durationMs = arrTime.getTime() - depTime.getTime();
@@ -204,45 +177,45 @@ const FlightResultsPage = () => {
             const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
             duration = `${hours}h ${minutes}m`;
           }
-          
+
           return {
             id: flight.id || index,
             airline: flight.airline,
             logo: flight.airline_logo || '/placeholder.svg',
             flightNumber: flight.flight_number,
-            departureTime: departureDateTime ? new Date(departureDateTime).toLocaleTimeString('en-US', { 
-              hour: '2-digit', 
-              minute: '2-digit', 
-              hour12: false 
+            departureTime: departureDateTime ? new Date(departureDateTime).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
             }) : 'N/A',
-            arrivalTime: arrivalDateTime ? new Date(arrivalDateTime).toLocaleTimeString('en-US', { 
-              hour: '2-digit', 
-              minute: '2-digit', 
-              hour12: false 
+            arrivalTime: arrivalDateTime ? new Date(arrivalDateTime).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
             }) : 'N/A',
             duration: duration,
-            departureAirport: flight.departure_airport || flight.origin_airport || `${flight.origin || 'Unknown'} (${flight.origin_code || flight.origin || 'UNK'})`,
-            arrivalAirport: flight.arrival_airport || flight.destination_airport || `${flight.destination || 'Unknown'} (${flight.destination_code || flight.destination || 'UNK'})`,
+            departureAirport: flight.origin_airport || `${flight.origin || 'Unknown'} (${flight.origin_code || flight.origin || 'UNK'})`,
+            arrivalAirport: flight.destination_airport || `${flight.destination || 'Unknown'} (${flight.destination_code || flight.destination || 'UNK'})`,
             departureCity: flight.origin || 'Unknown',
             arrivalCity: flight.destination || 'Unknown',
-            direct: flight.stops === 0,
-            stops: flight.stops || 0,
-            price: flight.price_myr || flight.price || flight.price_eur || Math.floor(Math.random() * 500) + 200,
+            direct: true, // Assuming direct flights for now
+            stops: 0, // Assuming no stops for now
+            price: flight.price || Math.floor(Math.random() * 500) + 200,
             currency: 'MYR',
             baggage: '7kg carry-on',
-            amenities: flight.amenities || ['Entertainment'],
-            aircraft: flight.aircraft || flight.aircraft_type || 'N/A',
+            amenities: ['Entertainment'],
+            aircraft: flight.aircraft || 'N/A',
             carbonEmission: 'Low',
             refundable: false,
             timeCategory: getTimeCategory(departureDateTime),
             status: flight.status || 'scheduled',
-            travelClass: flight.travel_class || 'Economy'
+            travelClass: flight.class || 'Economy'
           };
         });
-        
+
         console.log('Transformed flights:', transformedFlights.length);
         console.log('First transformed flight:', transformedFlights[0]);
-        
+
         if (isMounted) {
           setFlights(transformedFlights);
           console.log('Flights set to state:', transformedFlights.length);
@@ -267,7 +240,7 @@ const FlightResultsPage = () => {
 
     // Fetch flights when search parameters change
     fetchFlights();
-    
+
     // Cleanup function
     return () => {
       isMounted = false;
@@ -304,9 +277,8 @@ const FlightResultsPage = () => {
   useEffect(() => {
     const fetchAirlines = async () => {
       try {
-        const response = await fetch('/api/flights/browse?page=1&per_page=200');
-        const result = await response.json();
-        if (result.success && result.flights) {
+        const result = await browseFlights(1, 200);
+        if (result && result.flights) {
           const uniqueAirlines = [...new Set(result.flights.map(flight => flight.airline))].sort();
           setAirlines(uniqueAirlines);
         }
@@ -314,7 +286,7 @@ const FlightResultsPage = () => {
         console.error('Failed to fetch airlines:', error);
       }
     };
-    
+
     fetchAirlines();
   }, []);
 
@@ -324,16 +296,16 @@ const FlightResultsPage = () => {
     const filtered = flights.filter((flight) => {
       // Price range filter
       if (flight.price > searchParams.maxPrice) return false;
-      
+
       // Direct flights filter
       if (searchParams.directOnly && !flight.direct) return false;
-      
+
       // Airline filter
       if (searchParams.airline !== 'all' && flight.airline !== searchParams.airline) return false;
-      
+
       // Travel class filter
       if (searchParams.class !== 'all' && flight.travelClass !== searchParams.class) return false;
-      
+
       // Departure time filter
       if (searchParams.departureTime !== 'all') {
         const departureHour = parseInt(flight.departureTime.split(':')[0]);
@@ -352,13 +324,13 @@ const FlightResultsPage = () => {
             break;
         }
       }
-      
+
       // Stops filter
       if (searchParams.stops !== 'all') {
         if (searchParams.stops === 'direct' && flight.stops > 0) return false;
         if (searchParams.stops === '1+' && flight.stops === 0) return false;
       }
-      
+
       return true;
     });
 
@@ -397,12 +369,12 @@ const FlightResultsPage = () => {
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const checked = type === 'checkbox' ? (e.target as HTMLInputElement).checked : undefined;
-    
+
     setSearchParams(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
-    
+
     // Reset to page 1 when filters change
     setCurrentPage(1);
   };
@@ -440,12 +412,12 @@ const FlightResultsPage = () => {
       setIsLoading(true);
       setError(null);
       setCurrentPage(1); // Reset to page 1 when doing a new search
-      
+
       // Extract airport codes from search params using the same logic
       const extractAirportCode = (input) => {
         const match = input.match(/\(([^)]+)\)/);
         if (match) return match[1];
-        
+
         const upperInput = input.toUpperCase();
         if (upperInput.includes('SINGAPORE') || upperInput.includes('SIN')) return 'SIN';
         if (upperInput.includes('KUALA LUMPUR') || upperInput.includes('KUL')) return 'KUL';
@@ -453,26 +425,25 @@ const FlightResultsPage = () => {
         if (upperInput.includes('BANGKOK') || upperInput.includes('BKK')) return 'BKK';
         if (upperInput.includes('HANOI') || upperInput.includes('HAN')) return 'HAN';
         if (upperInput.includes('HO CHI MINH') || upperInput.includes('SGN')) return 'SGN';
-        
+
         if (/^[A-Z]{3}$/.test(upperInput)) return upperInput;
         return 'KUL';
       };
-      
+
       const originCode = extractAirportCode(searchParams.origin || '');
       const destinationCode = extractAirportCode(searchParams.destination || '');
-      
+
       // If no specific search criteria, use browse endpoint
       if (!searchParams.origin && !searchParams.destination) {
-        const browseResponse = await fetch('/api/flights/browse?page=1&per_page=200');
-        const browseResult = await browseResponse.json();
-        
-        if (browseResult.success && browseResult.flights) {
+        const browseResult = await browseFlights(1, 200);
+
+        if (browseResult && browseResult.flights) {
           const transformedFlights = browseResult.flights.map((flight, index) => {
-            const departureDateTime = flight.departure_datetime || flight.departure_time;
-            const arrivalDateTime = flight.arrival_datetime || flight.arrival_time;
-            
-            let duration = flight.duration || 'N/A';
-            if (departureDateTime && arrivalDateTime && duration === 'N/A') {
+            const departureDateTime = flight.departure_time;
+            const arrivalDateTime = flight.arrival_time;
+
+            let duration = flight.duration ? `${flight.duration}h` : 'N/A';
+            if (departureDateTime && arrivalDateTime && !flight.duration) {
               const depTime = new Date(departureDateTime);
               const arrTime = new Date(arrivalDateTime);
               const durationMs = arrTime.getTime() - depTime.getTime();
@@ -480,156 +451,117 @@ const FlightResultsPage = () => {
               const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
               duration = `${hours}h ${minutes}m`;
             }
-            
+
             return {
               id: flight.id || index,
               airline: flight.airline,
               logo: flight.airline_logo || '/placeholder.svg',
               flightNumber: flight.flight_number,
-              departureTime: departureDateTime ? new Date(departureDateTime).toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit', 
-                hour12: false 
+              departureTime: departureDateTime ? new Date(departureDateTime).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
               }) : 'N/A',
-              arrivalTime: arrivalDateTime ? new Date(arrivalDateTime).toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit', 
-                hour12: false 
+              arrivalTime: arrivalDateTime ? new Date(arrivalDateTime).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
               }) : 'N/A',
               duration: duration,
-              departureAirport: flight.departure_airport || flight.origin_airport || `${flight.origin || 'Unknown'} (${flight.origin_code || flight.origin || 'UNK'})`,
-              arrivalAirport: flight.arrival_airport || flight.destination_airport || `${flight.destination || 'Unknown'} (${flight.destination_code || flight.destination || 'UNK'})`,
+              departureAirport: flight.origin_airport || `${flight.origin || 'Unknown'} (${flight.origin_code || flight.origin || 'UNK'})`,
+              arrivalAirport: flight.destination_airport || `${flight.destination || 'Unknown'} (${flight.destination_code || flight.destination || 'UNK'})`,
               departureCity: flight.origin || 'Unknown',
               arrivalCity: flight.destination || 'Unknown',
-              direct: flight.stops === 0,
-              stops: flight.stops || 0,
-              price: flight.price_myr || flight.price_eur || flight.price || Math.floor(Math.random() * 500) + 200,
+              direct: true, // Assuming direct flights for now
+              stops: 0, // Assuming no stops for now
+              price: flight.price || Math.floor(Math.random() * 500) + 200,
               currency: 'MYR',
               baggage: '7kg carry-on',
-              amenities: flight.amenities || ['Entertainment'],
-              aircraft: flight.aircraft || flight.aircraft_type || 'N/A',
+              amenities: ['Entertainment'],
+              aircraft: flight.aircraft || 'N/A',
               carbonEmission: 'Low',
               refundable: false,
               timeCategory: getTimeCategory(departureDateTime),
               status: flight.status || 'scheduled',
-              travelClass: flight.travel_class || 'Economy'
+              travelClass: flight.class || 'Economy'
             };
           });
-          
+
           setFlights(transformedFlights);
           setError(null);
           setIsLoading(false);
           return;
         }
       }
-      
+
       const searchQuery = {
         origin: originCode,
         destination: destinationCode,
         departure_date: searchParams.departDate,
         return_date: searchParams.returnDate,
-        passengers: searchParams.passengers,
+        passengers: searchParams.passengers || 1,
         class: searchParams.class || 'Economy',
         limit: 200
       };
-      
-      console.log('Refreshing flights with params:', searchQuery);
-      
-      // Use the same direct API call as in useEffect
-      console.log('Making refresh API request to: /api/flights/search');
-      
-      const directResponse = await fetch('/api/flights/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(searchQuery)
-      });
-      console.log('Refresh API response status:', directResponse.status, directResponse.statusText);
-      
-      if (!directResponse.ok) {
-        const errorText = await directResponse.text();
-        console.error('Refresh API error response:', errorText);
-        throw new Error(`API returned ${directResponse.status}: ${directResponse.statusText}`);
-      }
-      
-      const responseText = await directResponse.text();
-      console.log('Raw refresh API response:', responseText);
-      
-      let apiData;
+
       try {
-        apiData = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('Failed to parse refresh JSON response:', parseError);
-        throw new Error('Invalid JSON response from API');
-      }
-      
-      console.log('Parsed refresh API response:', apiData);
-      
-      if (!apiData.success) {
-        throw new Error(apiData.message || 'API returned error');
-      }
-      
-      const flightResults = apiData.flights || apiData.data || [];
-      console.log('Refresh flight results received:', flightResults?.length || 0, 'flights');
-      
-      // Transform data same as in useEffect
-      const transformedFlights = flightResults.map((flight, index) => {
-        // Handle both field name variations from different API endpoints
-        const departureDateTime = flight.departure_datetime || flight.departure_time;
-        const arrivalDateTime = flight.arrival_datetime || flight.arrival_time;
-        
-        // Calculate duration if not provided
-        let duration = flight.duration || 'N/A';
-        if (departureDateTime && arrivalDateTime && duration === 'N/A') {
-          const depTime = new Date(departureDateTime);
-          const arrTime = new Date(arrivalDateTime);
-          const durationMs = arrTime.getTime() - depTime.getTime();
-          const hours = Math.floor(durationMs / (1000 * 60 * 60));
-          const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-          duration = `${hours}h ${minutes}m`;
-        }
-        
-        return {
-          id: flight.id || index,
-          airline: flight.airline,
-          logo: flight.airline_logo || '/placeholder.svg',
-          flightNumber: flight.flight_number,
-          departureTime: departureDateTime ? new Date(departureDateTime).toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit', 
-            hour12: false 
-          }) : 'N/A',
-          arrivalTime: arrivalDateTime ? new Date(arrivalDateTime).toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit', 
-            hour12: false 
-          }) : 'N/A',
-          duration: duration,
-          departureAirport: flight.departure_airport || flight.origin_airport || `${flight.origin || 'Unknown'} (${flight.origin_code || flight.origin || 'UNK'})`,
-          arrivalAirport: flight.arrival_airport || flight.destination_airport || `${flight.destination || 'Unknown'} (${flight.destination_code || flight.destination || 'UNK'})`,
-          departureCity: flight.origin || 'Unknown',
-          arrivalCity: flight.destination || 'Unknown',
-          direct: flight.stops === 0,
-          stops: flight.stops || 0,
-          price: flight.price_myr || flight.price_eur || flight.price || Math.floor(Math.random() * 500) + 200,
-          currency: 'MYR',
-          baggage: '7kg carry-on',
-          amenities: flight.amenities || ['Entertainment'],
-          aircraft: flight.aircraft || flight.aircraft_type || 'N/A',
-          carbonEmission: 'Low',
-          refundable: false,
-          timeCategory: getTimeCategory(departureDateTime),
-          status: flight.status || 'scheduled',
-          travelClass: flight.travel_class || 'Economy'
-        };
-      });
-      
-      setFlights(transformedFlights);
-      // Clear error if flights were successfully loaded
-      if (transformedFlights.length > 0) {
+        const flightResults = await searchFlights(searchQuery);
+        const transformedFlights = flightResults.map((flight, index) => {
+          const departureDateTime = flight.departure_time;
+          const arrivalDateTime = flight.arrival_time;
+
+          let duration = flight.duration ? `${flight.duration}h` : 'N/A';
+          if (departureDateTime && arrivalDateTime && !flight.duration) {
+            const depTime = new Date(departureDateTime);
+            const arrTime = new Date(arrivalDateTime);
+            const durationMs = arrTime.getTime() - depTime.getTime();
+            const hours = Math.floor(durationMs / (1000 * 60 * 60));
+            const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+            duration = `${hours}h ${minutes}m`;
+          }
+
+          return {
+            id: flight.id || index,
+            airline: flight.airline,
+            logo: flight.airline_logo || '/placeholder.svg',
+            flightNumber: flight.flight_number,
+            departureTime: departureDateTime ? new Date(departureDateTime).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            }) : 'N/A',
+            arrivalTime: arrivalDateTime ? new Date(arrivalDateTime).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            }) : 'N/A',
+            duration: duration,
+            departureAirport: flight.origin_airport || `${flight.origin || 'Unknown'} (${flight.origin_code || flight.origin || 'UNK'})`,
+            arrivalAirport: flight.destination_airport || `${flight.destination || 'Unknown'} (${flight.destination_code || flight.destination || 'UNK'})`,
+            departureCity: flight.origin || 'Unknown',
+            arrivalCity: flight.destination || 'Unknown',
+            direct: true, // Assuming direct flights for now
+            stops: 0, // Assuming no stops for now
+            price: flight.price || Math.floor(Math.random() * 500) + 200,
+            currency: 'MYR',
+            baggage: '7kg carry-on',
+            amenities: ['Entertainment'],
+            aircraft: flight.aircraft || 'N/A',
+            carbonEmission: 'Low',
+            refundable: false,
+            timeCategory: getTimeCategory(departureDateTime),
+            status: flight.status || 'scheduled',
+            travelClass: flight.class || 'Economy'
+          };
+        });
+
+        setFlights(transformedFlights);
         setError(null);
+      } catch (error) {
+        console.error('Refresh search failed:', error);
+        setError('Failed to refresh search. Please try again.');
+      } finally {
+        setIsLoading(false);
       }
     } catch (err) {
       console.error('Error refreshing flights:', err);
@@ -663,7 +595,7 @@ const FlightResultsPage = () => {
     day: 'numeric'
   });
 
-  const formattedReturnDate = searchParams.returnDate ? 
+  const formattedReturnDate = searchParams.returnDate ?
     new Date(searchParams.returnDate).toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
@@ -687,7 +619,7 @@ const FlightResultsPage = () => {
   return (
     <div className="page-layout bg-gray-50">
       <Header />
-      
+
       <div className="page-content">
         {/* Breadcrumb */}
         <div className="container mx-auto px-4 py-4">
@@ -799,15 +731,15 @@ const FlightResultsPage = () => {
                       value={`${searchParams.passengers || 1}-${searchParams.class || 'Economy'}`}
                       onChange={(e) => {
                         const [passengers, travelClass] = e.target.value.split('-');
-                        setSearchParams(prev => ({ 
-                          ...prev, 
+                        setSearchParams(prev => ({
+                          ...prev,
                           passengers: parseInt(passengers),
                           class: travelClass
                         }));
                       }}
                       className="w-full pl-12 pr-4 py-5 bg-white/20 backdrop-blur-sm border-2 border-white/40 rounded-2xl text-white focus:outline-none focus:ring-4 focus:ring-aerotrav-yellow/50 focus:border-aerotrav-yellow transition-all duration-300 hover:bg-white/30 focus:bg-white/30 text-lg"
                     >
-                      {[1,2,3,4,5,6,7,8].map(num => (
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
                         <React.Fragment key={num}>
                           <option value={`${num}-Economy`} className="bg-aerotrav-blue text-white">
                             {num} Adult{num > 1 ? 's' : ''} - Economy
@@ -830,7 +762,7 @@ const FlightResultsPage = () => {
 
                 {/* Enhanced Search Button */}
                 <div className="flex-shrink-0">
-                  <Button 
+                  <Button
                     onClick={handleRefreshSearch}
                     disabled={isLoading}
                     className="bg-gradient-to-r from-aerotrav-yellow to-yellow-400 hover:from-aerotrav-yellow-500 hover:to-yellow-500 text-aerotrav-blue font-bold px-10 py-5 rounded-2xl h-auto shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed"
@@ -881,7 +813,7 @@ const FlightResultsPage = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-lg font-semibold">Filters</h2>
-                                    <Button
+                  <Button
                     variant="ghost"
                     size="sm"
                     onClick={resetFilters}
@@ -913,9 +845,9 @@ const FlightResultsPage = () => {
                   {/* Stops */}
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-3 block">Stops</label>
-                    <select 
-                      name="stops" 
-                      value={searchParams.stops} 
+                    <select
+                      name="stops"
+                      value={searchParams.stops}
                       onChange={handleFilterChange}
                       className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-aerotrav-blue focus:border-transparent"
                     >
@@ -928,9 +860,9 @@ const FlightResultsPage = () => {
                   {/* Airline */}
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-3 block">Airline</label>
-                    <select 
-                      name="airline" 
-                      value={searchParams.airline} 
+                    <select
+                      name="airline"
+                      value={searchParams.airline}
                       onChange={handleFilterChange}
                       className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-aerotrav-blue focus:border-transparent"
                     >
@@ -944,9 +876,9 @@ const FlightResultsPage = () => {
                   {/* Travel Class */}
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-3 block">Travel Class</label>
-                    <select 
-                      name="class" 
-                      value={searchParams.class || 'all'} 
+                    <select
+                      name="class"
+                      value={searchParams.class || 'all'}
                       onChange={handleFilterChange}
                       className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-aerotrav-blue focus:border-transparent"
                     >
@@ -960,9 +892,9 @@ const FlightResultsPage = () => {
                   {/* Departure Time */}
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-3 block">Departure Time</label>
-                    <select 
-                      name="departureTime" 
-                      value={searchParams.departureTime} 
+                    <select
+                      name="departureTime"
+                      value={searchParams.departureTime}
                       onChange={handleFilterChange}
                       className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-aerotrav-blue focus:border-transparent"
                     >
@@ -1025,9 +957,9 @@ const FlightResultsPage = () => {
                     <h3 className="text-sm font-medium text-red-800">Error loading flights</h3>
                     <p className="text-sm text-red-600">{error}</p>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={handleRefreshSearch}
                     className="ml-auto border-red-200 text-red-600 hover:bg-red-50"
                   >
@@ -1049,22 +981,42 @@ const FlightResultsPage = () => {
                   </Button>
                 </Card>
               ) : (
-                paginatedFlights.map((flight, index) => (
-                  <FlightCard
-                    key={flight.id}
-                    id={flight.id}
-                    airline={flight.airline}
-                    logo={flight.logo}
-                    departureTime={flight.departureTime}
-                    arrivalTime={flight.arrivalTime}
-                    duration={flight.duration}
-                    departureAirport={flight.departureAirport}
-                    arrivalAirport={flight.arrivalAirport}
-                    direct={flight.direct}
-                    price={flight.price}
-                    currency={flight.currency}
-                    travelClass={flight.travelClass}
-                  />
+                paginatedFlights.map((flight) => (
+                  <div key={flight.id}>
+                    <FlightCard
+                      id={flight.id}
+                      airline={flight.airline}
+                      logo={flight.logo}
+                      departureTime={flight.departureTime}
+                      arrivalTime={flight.arrivalTime}
+                      duration={flight.duration}
+                      departureAirport={flight.departureAirport}
+                      arrivalAirport={flight.arrivalAirport}
+                      direct={flight.direct}
+                      price={flight.price}
+                      currency={flight.currency}
+                      travelClass={flight.travelClass}
+                    />
+                    <AddToCartButton
+                      item={{
+                        id: Number(flight.id),
+                        type: 'flight',
+                        title: `${flight.departureAirport} to ${flight.arrivalAirport}`,
+                        price: Number(flight.price),
+                        quantity: 1,
+                        details: {
+                          airline: flight.airline,
+                          departureTime: flight.departureTime,
+                          arrivalTime: flight.arrivalTime,
+                          duration: flight.duration,
+                          departureAirport: flight.departureAirport,
+                          arrivalAirport: flight.arrivalAirport,
+                          direct: flight.direct
+                        },
+                        image: flight.logo
+                      }}
+                    />
+                  </div>
                 ))
               )}
             </div>
@@ -1080,7 +1032,7 @@ const FlightResultsPage = () => {
                 >
                   Previous
                 </Button>
-                
+
                 {/* Page Numbers */}
                 <div className="flex gap-1">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
@@ -1095,19 +1047,19 @@ const FlightResultsPage = () => {
                     </Button>
                   ))}
                 </div>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
-                                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                      disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
                 >
                   Next
                 </Button>
-                
+
                 <div className="ml-4 text-sm text-gray-600">
-                                      Page {currentPage} of {totalPages} 
-                                      ({filteredAndSortedFlights.length} total flights)
+                  Page {currentPage} of {totalPages}
+                  ({filteredAndSortedFlights.length} total flights)
                 </div>
               </div>
             )}

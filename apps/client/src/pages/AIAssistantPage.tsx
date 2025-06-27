@@ -4,12 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Send, 
-  Camera, 
-  Image as ImageIcon, 
-  Plane, 
-  MapPin, 
+import {
+  Send,
+  Camera,
+  Image as ImageIcon,
+  Plane,
+  MapPin,
   Calendar,
   MessageCircle,
   Loader2,
@@ -48,7 +48,7 @@ const AIAssistantPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const API_KEY = 'AIzaSyCugUveFrMezRbB1EnFUrMHLcjCXE3lABo';
+  const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyCugUveFrMezRbB1EnFUrMHLcjCXE3lABo';
 
   const faqQuestions = [
     { text: "What's the best time to visit Paris?", icon: "🗼", category: "Destinations" },
@@ -91,7 +91,7 @@ const AIAssistantPage: React.FC = () => {
   const callGeminiAPI = async (message: string, imageFile?: File): Promise<string> => {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
-      
+
       let requestBody: any;
 
       if (imageFile) {
@@ -149,7 +149,7 @@ const AIAssistantPage: React.FC = () => {
       }
 
       const data = await response.json();
-      
+
       if (data.candidates && data.candidates[0] && data.candidates[0].content) {
         return data.candidates[0].content.parts[0].text;
       } else {
@@ -179,7 +179,7 @@ const AIAssistantPage: React.FC = () => {
 
     try {
       const aiResponse = await callGeminiAPI(text, selectedImage || undefined);
-      
+
       const aiMessage: ChatMessage = {
         id: generateMessageId(),
         text: aiResponse,
@@ -212,7 +212,7 @@ const AIAssistantPage: React.FC = () => {
         alert('Please select an image smaller than 5MB');
         return;
       }
-      
+
       setSelectedImage(file);
       const reader = new FileReader();
       reader.onload = () => setImagePreview(reader.result as string);
@@ -244,25 +244,24 @@ const AIAssistantPage: React.FC = () => {
             <Bot className="w-4 h-4 text-white" />
           </div>
         )}
-        
+
         <div
-          className={`relative px-4 py-3 rounded-2xl shadow-sm ${
-            message.isUser
-              ? 'bg-gradient-to-r from-aerotrav-blue to-blue-600 text-white rounded-br-sm'
-              : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm'
-          }`}
+          className={`relative px-4 py-3 rounded-2xl shadow-sm ${message.isUser
+            ? 'bg-gradient-to-r from-aerotrav-blue to-blue-600 text-white rounded-br-sm'
+            : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm'
+            }`}
         >
           <div className="prose prose-sm max-w-none">
             <p className="text-sm md:text-base whitespace-pre-wrap leading-relaxed m-0">
               {message.text}
             </p>
           </div>
-          
+
           <div className="flex items-center justify-between mt-3 pt-2 border-t border-opacity-20 border-current">
             <p className={`text-xs ${message.isUser ? 'text-blue-100' : 'text-gray-500'}`}>
               {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </p>
-            
+
             {!message.isUser && (
               <Button
                 variant="ghost"
@@ -305,8 +304,8 @@ const AIAssistantPage: React.FC = () => {
             <p className="text-gray-600 mb-6 leading-relaxed">
               Unlock personalized travel recommendations, instant planning assistance, and expert travel advice with our AI-powered assistant.
             </p>
-            <Button 
-              onClick={() => window.location.href = '/login'} 
+            <Button
+              onClick={() => window.location.href = '/login'}
               className="bg-gradient-to-r from-aerotrav-blue to-blue-600 hover:from-aerotrav-blue-700 hover:to-blue-700 text-white shadow-lg w-full"
             >
               Login to Continue
@@ -321,7 +320,7 @@ const AIAssistantPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex flex-col">
       <Header />
-      
+
       <main className="flex-grow flex flex-col">
         {/* Enhanced Page Header */}
         <div className="bg-white/80 backdrop-blur-sm border-b border-blue-100 shadow-sm">
@@ -341,7 +340,7 @@ const AIAssistantPage: React.FC = () => {
                   <p className="text-gray-600 mt-1">Your intelligent travel planning companion ✈️</p>
                 </div>
               </div>
-              
+
               {messages.length > 0 && (
                 <Button
                   variant="outline"
@@ -426,18 +425,18 @@ const AIAssistantPage: React.FC = () => {
                       <Sparkles className="h-4 w-4 text-yellow-800" />
                     </div>
                   </div>
-                  
+
                   <h3 className="text-2xl font-bold text-gray-900 mb-3">
                     Welcome to your AI Travel Assistant! ✈️
                   </h3>
                   <p className="text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
-                    I'm here to help you plan amazing trips, find the best deals, and answer any travel questions you might have. 
+                    I'm here to help you plan amazing trips, find the best deals, and answer any travel questions you might have.
                     Ask me about destinations, create itineraries, or get expert travel advice!
                   </p>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-4xl mx-auto mb-8">
                     {quickActions.map((action, index) => (
-                      <Card 
+                      <Card
                         key={index}
                         className="p-6 text-center hover:shadow-lg transition-all duration-200 cursor-pointer border-0 bg-white/80 backdrop-blur-sm hover:bg-white transform hover:scale-105"
                         onClick={() => sendMessage(action.text)}
@@ -481,8 +480,8 @@ const AIAssistantPage: React.FC = () => {
                         <span className="text-sm text-gray-600">AI is thinking...</span>
                         <div className="flex space-x-1">
                           <div className="w-2 h-2 bg-aerotrav-blue rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-aerotrav-blue rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                          <div className="w-2 h-2 bg-aerotrav-blue rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                          <div className="w-2 h-2 bg-aerotrav-blue rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                          <div className="w-2 h-2 bg-aerotrav-blue rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                         </div>
                       </div>
                     </div>
@@ -505,7 +504,7 @@ const AIAssistantPage: React.FC = () => {
                   onChange={handleImageUpload}
                   className="hidden"
                 />
-                
+
                 <Button
                   variant="outline"
                   size="lg"
@@ -545,7 +544,7 @@ const AIAssistantPage: React.FC = () => {
                   )}
                 </Button>
               </div>
-              
+
               {!isConnected && (
                 <div className="mt-2 flex items-center space-x-2 text-amber-600 text-sm">
                   <RefreshCw className="h-4 w-4" />
@@ -556,7 +555,7 @@ const AIAssistantPage: React.FC = () => {
           </div>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );

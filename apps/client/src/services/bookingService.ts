@@ -15,6 +15,11 @@ export interface Booking {
   updated_at: string;
   items: BookingItem[];
   item_count?: number;
+  details?: BookingItem[];
+  booking_status?: string;
+  payment_status?: string;
+  booking_date?: string;
+  special_requests?: string;
 }
 
 export interface BookingItem {
@@ -25,7 +30,8 @@ export interface BookingItem {
   item_name: string;
   quantity: number;
   price: number;
-  details: Record<string, unknown>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  details: Record<string, any>;
 }
 
 export interface PaymentIntentResponse {
@@ -35,7 +41,7 @@ export interface PaymentIntentResponse {
 
 // Create a payment intent
 export const createPaymentIntent = async (amount: number): Promise<PaymentIntentResponse> => {
-  return await post<PaymentIntentResponse>('/api/bookings/payment-intent', {
+  return await post<PaymentIntentResponse>('bookings/payment-intent', {
     amount,
     currency: 'usd'
   });
@@ -43,15 +49,15 @@ export const createPaymentIntent = async (amount: number): Promise<PaymentIntent
 
 // Create a new booking
 export const createBooking = async (
-userId: string,
-userEmail: string,
-userName: string,
-items: CartItem[],
-paymentMethod: string,
-paymentIntentId: string | undefined,
-totalAmount: number)
-: Promise<{bookingId: number;bookingReference: string;}> => {
-  return await post<{bookingId: number;bookingReference: string;}>('/api/bookings', {
+  userId: string,
+  userEmail: string,
+  userName: string,
+  items: CartItem[],
+  paymentMethod: string,
+  paymentIntentId: string | undefined,
+  totalAmount: number)
+  : Promise<{ bookingId: number; bookingReference: string; }> => {
+  const response = await post<{ data: { bookingId: number; bookingReference: string; } }>('bookings', {
     userId,
     userEmail,
     userName,
@@ -60,24 +66,27 @@ totalAmount: number)
     paymentIntentId,
     totalAmount
   });
+  return response.data;
 };
 
-// Get all bookings for a user
-export const getUserBookings = async (userId: string): Promise<Booking[]> => {
-  return await get<Booking[]>(`/api/bookings/user/${userId}`);
+// Get all bookings for the authenticated user
+export const getUserBookings = async (): Promise<Booking[]> => {
+  const response = await get<{ data: { bookings: Booking[] } }>('bookings/my-bookings');
+  return response.data.bookings;
 };
 
-// Get a single booking by ID or reference
-export const getBooking = async (idOrReference: string | number): Promise<Booking> => {
-  return await get<Booking>(`/api/bookings/${idOrReference}`);
+// Get a single booking by ID
+export const getBooking = async (id: string | number): Promise<Booking> => {
+  const response = await get<{ data: { booking: Booking } }>(`bookings/${id}`);
+  return response.data.booking;
 };
 
 // Update booking status
 export const updateBookingStatus = async (
-id: number,
-status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED')
-: Promise<void> => {
-  await put<void>(`/api/bookings/${id}/status`, { status });
+  id: number,
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED')
+  : Promise<void> => {
+  await put<void>(`bookings/${id}/status`, { status });
 };
 
 // Create a car booking with driver details
@@ -107,7 +116,7 @@ export const createCarBooking = async (
     driver_details: unknown;
     booking_status: string;
     payment_status: string;
-  }>('/api/bookings/car-booking', {
+  }>('bookings/car-booking', {
     carId,
     driverDetails,
     paymentDetails,

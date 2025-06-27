@@ -10,6 +10,7 @@ import Header from "@/components/Header"
 import Footer from "@/components/Footer"
 import { useToast } from "@/hooks/use-toast"
 import LoadingSpinner from "@/components/LoadingSpinner"
+import { createBooking } from '@/services/bookingService'
 
 const CarBookingPage = () => {
   const { id } = useParams()
@@ -35,7 +36,7 @@ const CarBookingPage = () => {
   useEffect(() => {
     const fetchCarDetails = async () => {
       if (!id) return
-      
+
       try {
         setIsLoading(true)
         const carData = await getCarById(id)
@@ -83,11 +84,35 @@ const CarBookingPage = () => {
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Add validation here
-    navigate(`/car-payment/${id}`)
-  }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!car) return;
+    // Collect driver details from the form (for now, use mock data)
+    const name = formData.name || 'Car Guest';
+    const email = formData.email || 'guest@example.com';
+    try {
+      await createBooking(
+        name,
+        email,
+        name,
+        [{
+          type: 'car',
+          id: car.id,
+          title: `${car.make} ${car.model}`,
+          image: car.images[0] || '',
+          price: car.daily_rate + Math.round(car.daily_rate * 0.3),
+          quantity: 1,
+          details: { ...car }
+        }],
+        'card',
+        undefined,
+        car.daily_rate + Math.round(car.daily_rate * 0.3)
+      );
+      navigate(`/car-payment/${id}`);
+    } catch (error) {
+      alert('Booking failed. Please try again.');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -108,7 +133,7 @@ const CarBookingPage = () => {
         <div className="container mx-auto py-8">
           <div className="text-center">
             <h2 className="text-2xl font-bold">Car not found</h2>
-            <Button 
+            <Button
               className="mt-4"
               onClick={() => navigate("/car-rentals")}
             >
@@ -129,8 +154,8 @@ const CarBookingPage = () => {
           {/* Left Column - Car Details and Form */}
           <div className="space-y-6">
             <div className="flex items-center gap-4 mb-6">
-              <img 
-                src={car.images[0] || 'https://images.unsplash.com/photo-1550355291-bbee04a92027?w=800&auto=format&fit=crop&q=60'} 
+              <img
+                src={car.images[0] || 'https://images.unsplash.com/photo-1550355291-bbee04a92027?w=800&auto=format&fit=crop&q=60'}
                 alt={`${car.make} ${car.model}`}
                 className="w-32 h-32 object-cover rounded-lg"
                 onError={(e) => {
@@ -156,7 +181,7 @@ const CarBookingPage = () => {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <h3 className="text-xl font-semibold">Driver Details</h3>
-              
+
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="name">Name</Label>
@@ -284,7 +309,7 @@ const CarBookingPage = () => {
           <div>
             <Card className="p-6">
               <h3 className="text-xl font-semibold mb-6">Car Price Breakdown</h3>
-              
+
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <span>Car hire charge</span>
@@ -305,7 +330,7 @@ const CarBookingPage = () => {
                   <span>MYR {car.daily_rate + Math.round(car.daily_rate * 0.3)}</span>
                 </div>
 
-                <Button 
+                <Button
                   type="submit"
                   className="w-full bg-primary text-white mt-6"
                   onClick={handleSubmit}

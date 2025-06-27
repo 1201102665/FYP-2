@@ -69,6 +69,7 @@ router.post('/register', (req, res, next) => {
 
 // User Login (converted from login_submit.php)
 router.post('/login', validateUserLogin, asyncHandler(async (req, res) => {
+  console.log('🟢 /login got:', req.body);
   console.log('Login attempt:', { email: req.body.email });
   const { email, password } = req.body;
 
@@ -107,7 +108,7 @@ router.post('/login', validateUserLogin, asyncHandler(async (req, res) => {
   // Verify password
   const isValidPassword = await verifyPassword(password, user.password);
   console.log('Password valid:', isValidPassword);
-  
+
   if (!isValidPassword) {
     return res.status(401).json({
       success: false,
@@ -123,7 +124,7 @@ router.post('/login', validateUserLogin, asyncHandler(async (req, res) => {
     // Log activity
     const sessionId = generateSessionId(req);
     await logUserActivity(user.id, sessionId, 'user_login', {
-      ip_address: req.ip,  
+      ip_address: req.ip,
       user_agent: req.get('User-Agent')
     });
 
@@ -163,7 +164,7 @@ router.get('/profile', asyncHandler(async (req, res) => {
   try {
     const jwt = (await import('jsonwebtoken')).default;
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     const user = await db.queryOne(
       `SELECT id, name, email, phone, role, status, profile_image, date_of_birth, 
               gender, nationality, passport_number, preferred_language, preferred_currency,
@@ -235,7 +236,7 @@ router.post('/logout', asyncHandler(async (req, res) => {
     try {
       const jwt = (await import('jsonwebtoken')).default;
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
+
       // Log logout activity
       const sessionId = generateSessionId(req);
       await logUserActivity(decoded.id, sessionId, 'user_logout', {

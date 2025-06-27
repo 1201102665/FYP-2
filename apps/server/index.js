@@ -36,6 +36,7 @@ import adminRoutes from './routes/admin.js';
 import searchRoutes from './routes/search.js';
 import destinationRoutes from './routes/destinations.js';
 import preferencesRoutes from './routes/preferences.js';
+import aiRoutes from './routes/ai.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -85,14 +86,14 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(compression());
 
 // Logging middleware
-if (process.env.NODE_ENV !== 'production') {
-  app.use(morgan('combined'));
-}
+// if (process.env.NODE_ENV !== 'production') {
+//   app.use(morgan('combined'));
+// }
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development'
@@ -113,11 +114,12 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/destinations', destinationRoutes);
 app.use('/api/preferences', preferencesRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(join(__dirname, 'public')));
-  
+
   app.get('*', (req, res) => {
     res.sendFile(join(__dirname, 'public', 'index.html'));
   });

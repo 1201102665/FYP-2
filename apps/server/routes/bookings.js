@@ -1,22 +1,165 @@
 import express from 'express';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { logUserActivity } from '../middleware/auth.js';
+import { authenticateToken, logUserActivity } from '../middleware/auth.js';
 import db from '../config/database.js';
 
 const router = express.Router();
 
-// Create car booking with driver details
-router.post('/car-booking', asyncHandler(async (req, res) => {
-  // Check if user is logged in
-  if (!req.user) {
-    return res.status(401).json({
+// Default POST endpoint for creating bookings from frontend
+router.post('/', authenticateToken, asyncHandler(async (req, res) => {
+  console.log('🔍 Booking creation request received:');
+  console.log('📋 Request body:', JSON.stringify(req.body, null, 2));
+  console.log('👤 User ID:', req.user.id);
+  console.log('📦 Items:', req.body.items);
+  console.log('💰 Total Amount:', req.body.totalAmount);
+
+  const userId = req.user.id;
+  const {
+    userId: requestUserId,
+    userEmail,
+    userName,
+    items,
+    paymentMethod,
+    paymentIntentId,
+    totalAmount
+  } = req.body;
+
+  // Validate required fields with detailed error messages
+  if (!items) {
+    console.log('❌ Items validation failed: items is undefined/null');
+    return res.status(400).json({
       success: false,
-      message: 'Please log in to complete booking'
+      message: 'Items are required'
     });
   }
 
+  if (!Array.isArray(items)) {
+    console.log('❌ Items validation failed: items is not an array, type:', typeof items);
+    return res.status(400).json({
+      success: false,
+      message: 'Items must be an array'
+    });
+  }
+
+  if (items.length === 0) {
+    console.log('❌ Items validation failed: items array is empty');
+    return res.status(400).json({
+      success: false,
+      message: 'Items array cannot be empty'
+    });
+  }
+
+  if (!totalAmount) {
+    console.log('❌ Total amount validation failed: totalAmount is undefined/null');
+    return res.status(400).json({
+      success: false,
+      message: 'Total amount is required'
+    });
+  }
+
+  if (totalAmount <= 0) {
+    console.log('❌ Total amount validation failed: totalAmount <= 0, value:', totalAmount);
+    return res.status(400).json({
+      success: false,
+      message: 'Total amount must be greater than 0'
+    });
+  }
+
+  console.log('✅ All validations passed, proceeding with booking creation...');
+
+  try {
+    // Start transaction
+    await db.query('START TRANSACTION');
+
+    // Generate unique booking reference
+    let bookingReference = 'BK' + new Date().toISOString().slice(0, 10).replace(/-/g, '') +
+      String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
+
+    // Ensure booking reference is unique
+    const existingBooking = await db.queryOne(
+      'SELECT id FROM bookings WHERE booking_reference = ?',
+      [bookingReference]
+    );
+
+    if (existingBooking) {
+      bookingReference = 'BK' + Date.now() + String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+    }
+
+    // Prepare booking details
+    const bookingDetails = items.map((item) => ({
+      service_id: parseInt(item.id),
+      service_type: item.type,
+      service_name: item.name,
+      quantity: parseInt(item.quantity),
+      unit_price: parseFloat(item.price),
+      total_price: parseFloat(item.price) * parseInt(item.quantity),
+      details: item.details || {}
+    }));
+
+    // Determine service type for booking
+    const serviceTypes = [...new Set(items.map((item) => item.type))];
+    const mainServiceType = serviceTypes.length === 1 ? serviceTypes[0] : 'mixed';
+
+    // Insert booking
+    const bookingResult = await db.query(`
+      INSERT INTO bookings 
+      (user_id, booking_reference, service_type, details, total_amount, 
+       payment_status, booking_status, booking_date, special_requests) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      userId,
+      bookingReference,
+      mainServiceType,
+      JSON.stringify(bookingDetails),
+      totalAmount,
+      'completed', // Payment is already processed
+      'confirmed',
+      new Date().toISOString().split('T')[0],
+      `User: ${userName}, Email: ${userEmail}`
+    ]);
+
+    const bookingId = bookingResult.insertId;
+
+    // Commit transaction
+    await db.query('COMMIT');
+
+    // Log user activity
+    await logUserActivity(userId, req.ip, 'booking_created', {
+      booking_id: bookingId,
+      booking_reference: bookingReference,
+      total_amount: totalAmount,
+      items_count: items.length,
+      user_agent: req.get('User-Agent')
+    });
+
+    // Return success response
+    res.json({
+      success: true,
+      message: 'Booking created successfully',
+      data: {
+        bookingId: parseInt(bookingId),
+        bookingReference: bookingReference,
+        total_amount: totalAmount,
+        items_count: items.length,
+        service_type: mainServiceType
+      }
+    });
+
+  } catch (error) {
+    // Rollback transaction
+    await db.query('ROLLBACK');
+    console.error('Booking creation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Booking creation failed. Please try again.'
+    });
+  }
+}));
+
+// Create car booking with driver details
+router.post('/car-booking', authenticateToken, asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const { 
+  const {
     carId,
     driverDetails,
     paymentDetails,
@@ -41,7 +184,7 @@ router.post('/car-booking', asyncHandler(async (req, res) => {
 
     // Get car details
     const car = await db.queryOne('SELECT * FROM cars WHERE id = ? AND status = "available"', [carId]);
-    
+
     if (!car) {
       await db.query('ROLLBACK');
       return res.status(404).json({
@@ -51,8 +194,8 @@ router.post('/car-booking', asyncHandler(async (req, res) => {
     }
 
     // Generate unique booking reference
-    let bookingReference = 'CAR' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + 
-                          String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
+    let bookingReference = 'CAR' + new Date().toISOString().slice(0, 10).replace(/-/g, '') +
+      String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
 
     // Ensure booking reference is unique
     const existingBooking = await db.queryOne(
@@ -149,17 +292,11 @@ router.post('/car-booking', asyncHandler(async (req, res) => {
 }));
 
 // Create booking from cart - migrated from checkout_submit.php
-router.post('/checkout', asyncHandler(async (req, res) => {
-  // Check if user is logged in
-  if (!req.user) {
-    return res.status(401).json({
-      success: false,
-      message: 'Please log in to complete checkout'
-    });
-  }
+router.post('/checkout', authenticateToken, asyncHandler(async (req, res) => {
+  console.log('Checkout request received:', req.body);
 
   const userId = req.user.id;
-  const { 
+  const {
     booking_date = new Date().toISOString().split('T')[0],
     return_date = null,
     special_requests = '',
@@ -235,8 +372,8 @@ router.post('/checkout', asyncHandler(async (req, res) => {
     const mainServiceType = uniqueServiceTypes.length === 1 ? uniqueServiceTypes[0] : 'mixed';
 
     // Generate unique booking reference
-    let bookingReference = 'BK' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + 
-                          String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
+    let bookingReference = 'BK' + new Date().toISOString().slice(0, 10).replace(/-/g, '') +
+      String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
 
     // Ensure booking reference is unique
     const existingBooking = await db.queryOne(
@@ -315,14 +452,7 @@ router.post('/checkout', asyncHandler(async (req, res) => {
 }));
 
 // Get user's bookings
-router.get('/my-bookings', asyncHandler(async (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({
-      success: false,
-      message: 'Authentication required'
-    });
-  }
-
+router.get('/my-bookings', authenticateToken, asyncHandler(async (req, res) => {
   try {
     const bookings = await db.query(`
       SELECT 
@@ -363,14 +493,8 @@ router.get('/my-bookings', asyncHandler(async (req, res) => {
 }));
 
 // Get booking details
-router.get('/:bookingId', asyncHandler(async (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({
-      success: false,
-      message: 'Authentication required'
-    });
-  }
-
+router.get('/:bookingId', authenticateToken, asyncHandler(async (req, res) => {
+  console.log('🟢 /bookings/:bookingId got:', req.params);
   const { bookingId } = req.params;
 
   try {

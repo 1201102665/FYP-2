@@ -80,10 +80,12 @@ const FlightCard: React.FC<FlightCardProps> = ({
   };
 
   const cartItem = {
-    id: id.toString(),
+    id: Number(id),
     type: 'flight' as const,
-    name: `${departureAirport} to ${arrivalAirport}`,
-    price: price,
+    title: `${departureAirport} to ${arrivalAirport}`,
+    image: logo,
+    price: Number(price),
+    quantity: 1,
     details: {
       airline,
       departureTime,
@@ -92,15 +94,14 @@ const FlightCard: React.FC<FlightCardProps> = ({
       departureAirport,
       arrivalAirport,
       direct
-    },
-    image: logo
+    }
   };
 
   const isInCart = items.some((item) => item.id === cartItem.id && item.type === cartItem.type);
 
   const handleAddToCart = () => {
     if (!isInCart) {
-      addToCart(cartItem, navigate);
+      addToCart(cartItem);
     }
   };
 
@@ -117,7 +118,7 @@ const FlightCard: React.FC<FlightCardProps> = ({
               </div>
             )}
           </div>
-          
+
           <div className="flex flex-col md:flex-row items-center gap-2 md:gap-8 flex-grow" data-id="x4m6exlrd" data-path="src/components/FlightCard.tsx">
             <div className="flex items-center gap-2" data-id="n1atzoxnh" data-path="src/components/FlightCard.tsx">
               <span className="text-xl font-bold" data-id="pz9mam6g1" data-path="src/components/FlightCard.tsx">{departureTime}</span>
@@ -127,34 +128,33 @@ const FlightCard: React.FC<FlightCardProps> = ({
               </div>
               <span className="text-xl font-bold" data-id="1ov2nlkk8" data-path="src/components/FlightCard.tsx">{arrivalTime}</span>
             </div>
-            
+
             <div className="text-sm md:text-base text-center md:text-left" data-id="6lh4f0q90" data-path="src/components/FlightCard.tsx">
               <p data-id="2ugglvbu8" data-path="src/components/FlightCard.tsx">{departureAirport} - {arrivalAirport}</p>
               <p data-id="7wcd8h1p6" data-path="src/components/FlightCard.tsx">{airline} • {travelClass}</p>
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center justify-between md:justify-end w-full md:w-auto gap-4" data-id="bstlvi0eg" data-path="src/components/FlightCard.tsx">
           <div className="flex items-center gap-2" data-id="k6luohu8m" data-path="src/components/FlightCard.tsx">
             <span className="text-base font-medium" data-id="we9gls00v" data-path="src/components/FlightCard.tsx">{duration}•</span>
             <span className="text-green-600 font-medium" data-id="9wa8mmcrf" data-path="src/components/FlightCard.tsx">{direct ? 'Direct' : 'Non-direct'}</span>
           </div>
-          
+
           <div className="flex flex-col items-end" data-id="sqq0yvb4o" data-path="src/components/FlightCard.tsx">
             <span className="text-xl font-bold" data-id="bja7styvd" data-path="src/components/FlightCard.tsx">{currency}{price}</span>
             <span className="text-xs text-gray-500" data-id="i2wta2vag" data-path="src/components/FlightCard.tsx">Return per traveler</span>
           </div>
-          
+
           <div className="flex flex-col gap-2" data-id="7frzzxzzo" data-path="src/components/FlightCard.tsx">
             <Button
               onClick={handleAddToCart}
               disabled={isInCart}
-              className={`${
-                isInCart 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-aerotrav-yellow hover:bg-aerotrav-yellow-500 text-black'
-              } font-medium px-4 py-2 rounded-md transition-colors`}
+              className={`${isInCart
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-aerotrav-yellow hover:bg-aerotrav-yellow-500 text-black'
+                } font-medium px-4 py-2 rounded-md transition-colors`}
             >
               {isInCart ? (
                 <>
@@ -168,7 +168,7 @@ const FlightCard: React.FC<FlightCardProps> = ({
                 </>
               )}
             </Button>
-            
+
             <Button
               variant="outline"
               onClick={handleViewDetails}

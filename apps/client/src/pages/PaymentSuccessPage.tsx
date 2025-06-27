@@ -6,13 +6,13 @@ import { Separator } from '@/components/ui/separator';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReviewForm from '@/components/ReviewForm';
-import { 
-  CheckCircle, 
-  Download, 
-  Mail, 
-  Calendar, 
-  MapPin, 
-  Users, 
+import {
+  CheckCircle,
+  Download,
+  Mail,
+  Calendar,
+  MapPin,
+  Users,
   Phone,
   Plane,
   Hotel,
@@ -29,9 +29,9 @@ const PaymentSuccessPage: React.FC = () => {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [reviewedItems, setReviewedItems] = useState<Set<string>>(new Set());
-  
+
   const bookingData = location.state;
-  
+
   if (!bookingData) {
     return (
       <div className="flex flex-col min-h-screen">
@@ -51,7 +51,7 @@ const PaymentSuccessPage: React.FC = () => {
   }
 
   const { bookingReference, checkoutData, cartItems, paymentAmount, bookingDate } = bookingData;
-  
+
   const getItemIcon = (type: string) => {
     switch (type) {
       case 'flight': return <Plane className="h-4 w-4" />;
@@ -74,6 +74,7 @@ const PaymentSuccessPage: React.FC = () => {
   };
 
   const downloadItinerary = () => {
+    console.log('🟢 bookingReference:', bookingReference);
     // In a real application, this would generate and download a PDF
     alert('Itinerary download will be available soon!');
   };
@@ -112,7 +113,7 @@ const PaymentSuccessPage: React.FC = () => {
       <Header />
       <main className="flex-grow bg-gray-50 py-8">
         <div className="container mx-auto px-4">
-          
+
           {/* Success Header */}
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
@@ -129,10 +130,10 @@ const PaymentSuccessPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
+
             {/* Booking Details */}
             <div className="lg:col-span-2 space-y-6">
-              
+
               {/* Booking Summary */}
               <Card>
                 <CardHeader>
@@ -174,8 +175,8 @@ const PaymentSuccessPage: React.FC = () => {
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center">
                           {item.image ? (
-                            <img 
-                              src={item.image} 
+                            <img
+                              src={item.image}
                               alt={item.name}
                               className="w-full h-full object-cover rounded-lg"
                             />
@@ -225,7 +226,7 @@ const PaymentSuccessPage: React.FC = () => {
                   </CardHeader>
                   <CardContent>
                     <p className="text-blue-700 mb-4">
-                      Help other travelers by sharing your experience with the services you just booked. 
+                      Help other travelers by sharing your experience with the services you just booked.
                       Your reviews help us improve and assist future travelers in making informed decisions.
                     </p>
                     <div className="flex flex-wrap gap-2">
@@ -327,22 +328,22 @@ const PaymentSuccessPage: React.FC = () => {
 
             {/* Actions Sidebar */}
             <div className="lg:col-span-1 space-y-6">
-              
+
               {/* Quick Actions */}
               <Card>
                 <CardHeader>
                   <CardTitle>Quick Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <Button 
+                  <Button
                     onClick={downloadItinerary}
                     className="w-full bg-aerotrav-blue hover:bg-aerotrav-blue-700"
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Download Itinerary
                   </Button>
-                  
-                  <Button 
+
+                  <Button
                     onClick={sendConfirmationEmail}
                     variant="outline"
                     className="w-full"
@@ -350,8 +351,8 @@ const PaymentSuccessPage: React.FC = () => {
                     <Mail className="h-4 w-4 mr-2" />
                     Send Confirmation Email
                   </Button>
-                  
-                  <Button 
+
+                  <Button
                     onClick={() => navigate('/profile')}
                     variant="outline"
                     className="w-full"
@@ -359,8 +360,8 @@ const PaymentSuccessPage: React.FC = () => {
                     <Users className="h-4 w-4 mr-2" />
                     View My Bookings
                   </Button>
-                  
-                  <Button 
+
+                  <Button
                     onClick={() => navigate('/')}
                     variant="outline"
                     className="w-full"
@@ -421,9 +422,9 @@ const PaymentSuccessPage: React.FC = () => {
           </div>
         </div>
       </main>
-      
+
       {/* Review Form Modal */}
-      {selectedItem && (
+      {selectedItem && typeof bookingReference === 'string' && (
         <ReviewForm
           itemId={selectedItem.id}
           itemType={selectedItem.type}
@@ -435,7 +436,7 @@ const PaymentSuccessPage: React.FC = () => {
           isOpen={showReviewForm}
         />
       )}
-      
+
       <Footer />
     </div>
   );

@@ -36,6 +36,8 @@ import TermsPage from './pages/TermsPage';
 import CareersPage from './pages/CareersPage';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ProtectedRoute';
+import BookingDetailsPage from './pages/BookingDetailsPage';
+import BookingConfirmationPage from './pages/BookingConfirmationPage';
 
 function App() {
   return (
@@ -66,6 +68,7 @@ function App() {
                 <Route path="/package-booking-success" element={<PackageBookingSuccessPage />} />
                 <Route path="/rate-flight" element={<RateFlightPage />} />
                 <Route path="/booking-confirmation/:reference" element={<BookingConfirmedWrapper />} />
+                <Route path="/booking-confirmation" element={<BookingConfirmationPage />} />
                 <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
                 <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
                 <Route path="/payment" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
@@ -76,6 +79,7 @@ function App() {
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/careers" element={<CareersPage />} />
+                <Route path="/bookings/:id" element={<ProtectedRoute><BookingDetailsPage /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>

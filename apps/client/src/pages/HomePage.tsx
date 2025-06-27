@@ -16,7 +16,7 @@ import { Destination } from "@/services/destinationService";
 import destinationService from "@/services/destinationService";
 import { useToast } from "@/hooks/use-toast";
 import { flightService } from '@/services';
-import hotelService  from '@/services/hotelService';
+import hotelService from '@/services/hotelService';
 import packageService from '@/services/packageService';
 import { carService } from '@/services';
 import FlightCard from '@/components/FlightCard';
@@ -24,14 +24,14 @@ import HotelCard from '@/components/HotelCard';
 import CarCard from '@/components/CarCard';
 import PackageCard from '@/components/PackageCard';
 
-import { 
-  Search, 
-  MapPin, 
-  Calendar, 
-  Users, 
-  Plane, 
-  Hotel, 
-  Car as CarIcon, 
+import {
+  Search,
+  MapPin,
+  Calendar,
+  Users,
+  Plane,
+  Hotel,
+  Car as CarIcon,
   Package,
   Star,
   TrendingUp,
@@ -48,7 +48,6 @@ import CheckoutProgress from "@/components/CheckoutProgress";
 import { getDestinations } from "@/services/destinationService";
 import type { Car } from '@/services/carService';
 import type { PackageCardProps } from '@/components/PackageCard';
-import { useUserActivity } from '@/hooks/use-user-activity';
 
 // Define types for recommendations
 interface FlightRecommendation {
@@ -81,7 +80,7 @@ interface HotelRecommendation {
 }
 
 const HomePage = () => {
-  const { trackView } = useUserActivity();
+  const { trackView } = useUserActivityContext();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -113,7 +112,7 @@ const HomePage = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchDestinations();
   }, []);
 
@@ -216,26 +215,30 @@ const HomePage = () => {
 
     switch (selectedTab) {
       case 'Flights':
-        navigate('/flights', { state: { 
-          origin: 'Kuala Lumpur (KUL)', 
-          destination: searchParams.destination || 'Da Nang (DAD)',
-          departDate: searchParams.checkIn,
-          returnDate: searchParams.checkOut,
-          passengers: parseInt(searchParams.guests.split(' ')[0])
-        }});
+        navigate('/flights', {
+          state: {
+            origin: 'Kuala Lumpur (KUL)',
+            destination: searchParams.destination || 'Da Nang (DAD)',
+            departDate: searchParams.checkIn,
+            returnDate: searchParams.checkOut,
+            passengers: parseInt(searchParams.guests.split(' ')[0])
+          }
+        });
         break;
       case 'Hotels':
         navigate('/hotels', { state: searchData });
         break;
       case 'Cars':
-        navigate('/car-rentals', { state: {
-          pickupLocation: searchParams.destination || 'Kuala Lumpur, Malaysia',
-          pickupDate: searchParams.checkIn,
-          dropoffDate: searchParams.checkOut
-        }});
+        navigate('/car-rentals', {
+          state: {
+            pickupLocation: searchParams.destination || 'Kuala Lumpur, Malaysia',
+            pickupDate: searchParams.checkIn,
+            dropoffDate: searchParams.checkOut
+          }
+        });
         break;
       case 'Packages':
-        navigate('/packages', { state: { destination: searchParams.destination }});
+        navigate('/packages', { state: { destination: searchParams.destination } });
         break;
       default:
         // For 'All' tab, go to the most relevant page based on destination
@@ -325,7 +328,7 @@ const HomePage = () => {
   return (
     <div className="page-layout bg-gray-50">
       <Header />
-      
+
       <main className="page-content">
         {/* Hero Section with Enhanced Search */}
         <section className="relative bg-gradient-to-br from-aerotrav-blue via-aerotrav-blue-700 to-aerotrav-blue-800 overflow-hidden">
@@ -334,13 +337,13 @@ const HomePage = () => {
             <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
               <defs>
                 <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                  <path d="M 10 0 L 0 0 0 10" fill="none" stroke="white" strokeWidth="0.5"/>
+                  <path d="M 10 0 L 0 0 0 10" fill="none" stroke="white" strokeWidth="0.5" />
                 </pattern>
               </defs>
               <rect width="100" height="100" fill="url(#grid)" />
             </svg>
           </div>
-          
+
           <div className="relative container mx-auto px-4 py-20">
             <div className="text-center max-w-4xl mx-auto">
               <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
@@ -408,7 +411,7 @@ const HomePage = () => {
                     <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
                       <Users className="h-5 w-5 text-aerotrav-blue group-focus-within:text-aerotrav-blue-700 transition-colors" />
                     </div>
-                    <select 
+                    <select
                       value={searchParams.guests}
                       onChange={(e) => setSearchParams(prev => ({ ...prev, guests: e.target.value }))}
                       className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-aerotrav-blue focus:ring-4 focus:ring-aerotrav-blue/20 transition-all duration-300 bg-white hover:border-gray-300 text-gray-800 appearance-none cursor-pointer"
@@ -430,7 +433,7 @@ const HomePage = () => {
                 </div>
 
                 {/* Enhanced Search Button */}
-                <Button 
+                <Button
                   onClick={handleSearch}
                   className="w-full bg-gradient-to-r from-aerotrav-blue to-aerotrav-blue-700 hover:from-aerotrav-blue-700 hover:to-aerotrav-blue-800 text-white py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 group"
                 >
@@ -456,7 +459,7 @@ const HomePage = () => {
               <h2 className="text-3xl font-bold text-gray-900 mb-4">What are you looking for?</h2>
               <p className="text-gray-600 max-w-2xl mx-auto">Choose from our wide range of travel services to create your perfect trip</p>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {quickActions.map((action, index) => (
                 <Link key={index} to={action.path}>
@@ -482,7 +485,7 @@ const HomePage = () => {
               <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose AeroTrav?</h2>
               <p className="text-gray-600 max-w-2xl mx-auto">We make travel planning easy, secure, and enjoyable with our premium services</p>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               {features.map((feature, index) => (
                 <div key={index} className="text-center group">

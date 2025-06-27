@@ -56,41 +56,30 @@ const ProfilePage: React.FC = () => {
   useEffect(() => {
     const fetchPreferences = async () => {
       try {
-        const token = getToken();
-        if (!token) {
-          console.error('No authentication token found');
-          return;
-        }
-
-        const response = await fetch('http://localhost:3001/api/preferences', {
+        const response = await fetch('/api/preferences', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           setSelectedPreferences(data.preferred_activities || []);
           setSelectedDestinations(data.favorite_destinations || []);
           setBudgetRange([data.budget_range_min || 0, data.budget_range_max || 5000]);
           setTravelStyle(data.travel_style || []);
+        } else {
+          console.error('Failed to fetch preferences');
         }
       } catch (error) {
         console.error('Error fetching preferences:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load preferences. Please try again.",
-          variant: "destructive"
-        });
       }
     };
 
-    if (isAuthenticated) {
-      fetchPreferences();
-    }
-  }, [isAuthenticated, getToken, toast]);
+    fetchPreferences();
+  }, []);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -241,76 +230,37 @@ const ProfilePage: React.FC = () => {
 
   const savePreferences = async () => {
     try {
-      // Validate data before sending
-      if (!Array.isArray(selectedPreferences) || !Array.isArray(selectedDestinations)) {
-        throw new Error('Invalid preferences format');
-      }
-
-      // Ensure budgetRange values are numbers
-      const minBudget = Number(budgetRange[0]);
-      const maxBudget = Number(budgetRange[1]);
-
-      if (isNaN(minBudget) || isNaN(maxBudget)) {
-        throw new Error('Invalid budget range');
-      }
-
-      const token = getToken();
-      if (!token) {
-        toast({
-          title: "Authentication Error",
-          description: "Please log in to save preferences.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const response = await fetch('http://localhost:3001/api/preferences', {
-        method: 'POST',
+      const response = await fetch('/api/preferences', {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
           preferred_activities: selectedPreferences,
           favorite_destinations: selectedDestinations,
-          budget_range_min: minBudget,
-          budget_range_max: maxBudget,
-          travel_style: Array.isArray(travelStyle) ? travelStyle : [travelStyle].filter(Boolean)
+          budget_range_min: budgetRange[0],
+          budget_range_max: budgetRange[1],
+          travel_style: travelStyle
         })
       });
 
-      const data = await response.json();
-
       if (response.ok) {
-        // Update local state
-        updatePreferences({
-          preferredActivities: selectedPreferences,
-          favoriteDestinations: selectedDestinations,
-          budgetRange: [minBudget, maxBudget],
-          travelStyle: Array.isArray(travelStyle) ? travelStyle : [travelStyle]
-        });
-
         toast({
-          title: "Preferences Saved",
-          description: "Your travel preferences have been updated successfully.",
-          variant: "default"
+          title: "Preferences saved",
+          description: "Your preferences have been updated successfully.",
+          duration: 3000
         });
       } else {
-        // Handle server error response
-        const errorMessage = data.error || data.message || 'Failed to save preferences';
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive"
-        });
+        throw new Error('Failed to save preferences');
       }
     } catch (error) {
-      // Handle network or parsing errors
       console.error('Error saving preferences:', error);
       toast({
         title: "Error",
-        description: "Network error occurred. Please try again.",
-        variant: "destructive"
+        description: "Failed to save preferences. Please try again.",
+        variant: "destructive",
+        duration: 3000
       });
     }
   };
@@ -509,8 +459,8 @@ const ProfilePage: React.FC = () => {
                     <Save className="w-4 h-4 mr-2" />
                     Save Changes
                   </Button>
-                  <Button 
-                    onClick={() => setIsEditingPersonal(false)} 
+                  <Button
+                    onClick={() => setIsEditingPersonal(false)}
                     variant="outline"
                   >
                     <X className="w-4 h-4 mr-2" />
@@ -564,9 +514,9 @@ const ProfilePage: React.FC = () => {
                     ))}
                   </div>
                 </div>
-                
+
                 <Separator />
-                
+
                 {/* Destinations */}
                 <div>
                   <h3 className="text-lg font-medium mb-4">Favorite Destinations</h3>
@@ -583,9 +533,9 @@ const ProfilePage: React.FC = () => {
                     ))}
                   </div>
                 </div>
-                
+
                 <Separator />
-                
+
                 {/* Budget Range */}
                 <div>
                   <h3 className="text-lg font-medium mb-4">Budget Range</h3>
@@ -614,9 +564,9 @@ const ProfilePage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <Separator />
-                
+
                 {/* Travel Style */}
                 <div>
                   <h3 className="text-lg font-medium mb-4">Travel Style</h3>
@@ -633,7 +583,7 @@ const ProfilePage: React.FC = () => {
                     ))}
                   </div>
                 </div>
-                
+
                 <div className="pt-4">
                   <Button onClick={savePreferences} className="bg-aerotrav-blue hover:bg-aerotrav-blue-700">
                     Save Preferences
@@ -652,7 +602,7 @@ const ProfilePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
-      
+
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Left Column - User Profile */}
@@ -670,9 +620,9 @@ const ProfilePage: React.FC = () => {
                   <div className="relative mb-4">
                     <div className="w-24 h-24 rounded-full bg-aerotrav-blue-100 flex items-center justify-center text-aerotrav-blue overflow-hidden">
                       {profilePicture ? (
-                        <img 
-                          src={profilePicture} 
-                          alt="Profile" 
+                        <img
+                          src={profilePicture}
+                          alt="Profile"
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -693,7 +643,7 @@ const ProfilePage: React.FC = () => {
                       className="hidden"
                     />
                   </div>
-                  
+
                   <h3 className="text-lg font-medium">{personalInfo.firstName} {personalInfo.lastName}</h3>
                   <p className="text-sm text-gray-500">{personalInfo.email}</p>
                   <div className="flex items-center mt-1">
@@ -701,44 +651,41 @@ const ProfilePage: React.FC = () => {
                     <span className="text-xs text-gray-500">Premium Member</span>
                   </div>
                 </div>
-                
+
                 <nav className="space-y-1">
                   <button
                     onClick={() => setActiveSection('profile')}
-                    className={`flex w-full items-center px-3 py-2 text-sm font-medium rounded-md ${
-                      activeSection === 'profile' 
-                        ? 'bg-aerotrav-blue-50 text-aerotrav-blue' 
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`flex w-full items-center px-3 py-2 text-sm font-medium rounded-md ${activeSection === 'profile'
+                      ? 'bg-aerotrav-blue-50 text-aerotrav-blue'
+                      : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                   >
                     <User className="h-5 w-5 mr-2" />
                     My Profile
                   </button>
-                  
+
                   <button
                     onClick={() => setActiveSection('bookings')}
-                    className={`flex w-full items-center px-3 py-2 text-sm font-medium rounded-md ${
-                      activeSection === 'bookings' 
-                        ? 'bg-aerotrav-blue-50 text-aerotrav-blue' 
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`flex w-full items-center px-3 py-2 text-sm font-medium rounded-md ${activeSection === 'bookings'
+                      ? 'bg-aerotrav-blue-50 text-aerotrav-blue'
+                      : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                   >
                     <BookOpen className="h-5 w-5 mr-2" />
                     My Bookings
                   </button>
-                  
+
                   <button
                     onClick={() => setActiveSection('preferences')}
-                    className={`flex w-full items-center px-3 py-2 text-sm font-medium rounded-md ${
-                      activeSection === 'preferences' 
-                        ? 'bg-aerotrav-blue-50 text-aerotrav-blue' 
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`flex w-full items-center px-3 py-2 text-sm font-medium rounded-md ${activeSection === 'preferences'
+                      ? 'bg-aerotrav-blue-50 text-aerotrav-blue'
+                      : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                   >
                     <Settings className="h-5 w-5 mr-2" />
                     Preferences
                   </button>
-                  
+
                   <button
                     onClick={handleLogout}
                     className="flex w-full items-center px-3 py-2 text-sm font-medium rounded-md text-red-600 hover:bg-red-50"
@@ -750,14 +697,14 @@ const ProfilePage: React.FC = () => {
               </CardContent>
             </Card>
           </div>
-          
+
           {/* Right Column - Main Content */}
           <div className="md:col-span-2">
             {renderContent()}
           </div>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );
