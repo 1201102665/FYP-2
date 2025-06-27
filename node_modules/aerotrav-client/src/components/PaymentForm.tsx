@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { useCart, CartItem } from '@/contexts/CartContext';
+import { useCartContext } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserActivityContext } from '@/contexts/UserActivityContext';
 import { createPaymentIntent, createBooking } from '@/services/bookingService';
@@ -18,7 +18,7 @@ interface PaymentFormProps {
 }
 
 const PaymentForm: React.FC<PaymentFormProps> = ({ onSuccess, onError }) => {
-  const { items, getTotalPrice, clearCart } = useCart();
+  const { items, total, clearCart } = useCartContext();
   const { user } = useAuth();
   const { trackBooking } = useUserActivityContext();
   const { toast } = useToast();
@@ -62,7 +62,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSuccess, onError }) => {
       setProcessing(true);
 
       // Step 1: Create payment intent (in a real app, this would interact with Stripe)
-      const totalAmount = parseFloat((getTotalPrice() * 1.1).toFixed(2)); // Including tax
+      const totalAmount = parseFloat((total * 1.1).toFixed(2)); // Including tax
       const paymentIntent = await createPaymentIntent(totalAmount);
 
       // Step 2: Process the payment (simulated)
@@ -83,9 +83,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSuccess, onError }) => {
       // Step 4: Track bookings for analytics
       items.forEach((item) => {
         trackBooking(
-          item.id,
+          String(item.id),
           item.type,
-          item.name
+          item.title
         );
       });
 

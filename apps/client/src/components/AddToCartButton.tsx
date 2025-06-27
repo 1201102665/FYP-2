@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useCart, CartItem } from '@/contexts/CartContext';
+import { useCartContext } from '@/contexts/CartContext';
 import { ShoppingCart, Check } from 'lucide-react';
 
 interface AddToCartButtonProps {
@@ -18,12 +18,12 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
   className = ''
 }) => {
   const navigate = useNavigate();
-  const { addItemWithCustomToast, items } = useCart();
+  const { addToCart, items } = useCartContext();
   const isInCart = items.some((cartItem) => cartItem.id === item.id && cartItem.type === item.type);
 
   const handleAddToCart = () => {
     if (!isInCart) {
-      addItemWithCustomToast(item, navigate);
+      addToCart(item, navigate);
     }
   };
 

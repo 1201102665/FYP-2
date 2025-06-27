@@ -1,77 +1,204 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Car } from "@/services/carService";
 import { useUserActivityContext } from "@/contexts/UserActivityContext";
-
-// Car type is now imported from carService.ts
+import { useNavigate } from "react-router-dom";
+import { MapPin, Star, Users, Fuel, Settings, ChevronLeft, ChevronRight, ShoppingCart } from "lucide-react";
+import { useToast } from '@/hooks/use-toast';
+import { useCartContext } from '@/contexts/CartContext';
 
 interface CarCardProps {
   car: Car;
-  onBookNow: () => void;
 }
 
-const CarCard = ({ car, onBookNow }: CarCardProps) => {
+const CarCard: React.FC<CarCardProps> = ({ car }) => {
   const { trackView } = useUserActivityContext();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { addToCart } = useCartContext();
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [imageError, setImageError] = useState(false);
 
   // Track when the car is viewed
   React.useEffect(() => {
-    trackView(car.id.toString(), 'car');
-  }, [car.id, trackView]);
+    if (car?.id) {
+      trackView(car.id.toString(), 'car');
+    }
+  }, [car?.id, trackView]);
+
+  // Additional safety check
+  if (!car) {
+    console.error('CarCard: car prop is undefined');
+    return <div>Error: Car data not available</div>;
+  }
+
+  // Safe defaults for car properties
+  const safeImages = car?.images || [];
+  const safeFeatures = car?.features || [];
+  
+  // Simplified fallback image
+  const getFallbackImage = () => {
+    return 'https://images.unsplash.com/photo-1550355291-bbee04a92027?w=800&auto=format&fit=crop&q=60';
+  };
+
+  // Simple image logic - always ensure we have an image
+  const currentImage = safeImages.length > 0 ? safeImages[currentImageIndex] : getFallbackImage();
+  console.log('🖼️ CarCard - Current image URL:', currentImage);
+
+  const displayImages = safeImages.length > 0 && safeImages[0].startsWith('http') ? safeImages : [getFallbackImage()];
+
+  const handleNextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const maxIndex = Math.max(0, displayImages.length - 1);
+    setCurrentImageIndex(prev => 
+      prev >= maxIndex ? 0 : prev + 1
+    );
+    setImageError(false);
+  };
+
+  const handlePrevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const maxIndex = Math.max(0, displayImages.length - 1);
+    setCurrentImageIndex(prev => 
+      prev <= 0 ? maxIndex : prev - 1
+    );
+    setImageError(false);
+  };
+
+  const handleViewDetails = () => {
+    navigate(`/car-details/${car.id}`);
+  };
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      addToCart({
+        type: 'car',
+        id: car.id,
+        title: `${car.make} ${car.model}`,
+        image: displayImages[0] || getFallbackImage(),
+        price: car.daily_rate,
+        quantity: 1,
+        details: {
+          category: car.category,
+          transmission: car.transmission,
+          seats: car.seats,
+          luggage: car.luggage_capacity
+        }
+      });
+      
+      toast({
+        title: "Added to cart",
+        description: `${car.make} ${car.model} has been added to your cart.`,
+        duration: 3000
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add car to cart. Please try again.",
+        variant: "destructive",
+        duration: 3000
+      });
+    }
+  };
+
   return (
-    <div className="bg-white rounded-lg overflow-hidden shadow-md border border-gray-100" data-id="scem1811a" data-path="src/components/CarCard.tsx">
-      <div className="flex flex-col md:flex-row" data-id="4g6l2809t" data-path="src/components/CarCard.tsx">
-        <div className="md:w-1/3 h-48 md:h-auto" data-id="9xma1yr5o" data-path="src/components/CarCard.tsx">
+    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+      <div className="flex">
+        {/* Image Section */}
+        <div className="relative w-1/3 bg-gray-200 flex-shrink-0" style={{ minHeight: '250px' }}>
           <img
-            src={car.images[0] || '/placeholder.svg'}
+            src={currentImage}
             alt={`${car.make} ${car.model}`}
-            className="w-full h-full object-cover" data-id="x7r6t70pk" data-path="src/components/CarCard.tsx" />
+            className="w-full h-full object-cover"
+            style={{ 
+              height: '250px', 
+              width: '100%', 
+              display: 'block',
+              objectFit: 'cover'
+            }}
+            onLoad={() => {
+              console.log('✅ Image loaded successfully:', currentImage);
+            }}
+            onError={(e) => {
+              console.error('❌ Image failed to load:', currentImage);
+              const target = e.target as HTMLImageElement;
+              const fallbackUrl = 'https://images.unsplash.com/photo-1550355291-bbee04a92027?w=800&auto=format&fit=crop&q=60';
+              console.log('🔄 Setting emergency fallback:', fallbackUrl);
+              target.src = fallbackUrl;
+            }}
+          />
+          {displayImages.length > 1 && !imageError && (
+            <>
+              <button
+                onClick={handlePrevImage}
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-1 rounded-full hover:bg-black/70"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                onClick={handleNextImage}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-1 rounded-full hover:bg-black/70"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </>
+          )}
         </div>
-        
-        <div className="p-4 flex flex-col justify-between flex-grow" data-id="2bhpzlt7o" data-path="src/components/CarCard.tsx">
-          <div data-id="yoivetofk" data-path="src/components/CarCard.tsx">
-            <h3 className="text-lg font-bold" data-id="f2d3p6moz" data-path="src/components/CarCard.tsx">{car.make} {car.model}</h3>
-            
-            <div className="flex items-center mt-2" data-id="wqzcfy08g" data-path="src/components/CarCard.tsx">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-id="vankjaskd" data-path="src/components/CarCard.tsx">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" data-id="ddcu3f21g" data-path="src/components/CarCard.tsx" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" data-id="7tonhlsck" data-path="src/components/CarCard.tsx" />
-              </svg>
-              <span className="ml-1 text-sm text-gray-700" data-id="lqxr14cyv" data-path="src/components/CarCard.tsx">{car.location_city}, {car.location_country}</span>
+
+        {/* Details Section */}
+        <div className="w-2/3 p-6">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="text-xl font-semibold">{car.make} {car.model}</h3>
+              <p className="text-gray-600">{car.year} • {car.category}</p>
+            </div>
+            <div className="flex items-center">
+              <Star className="h-5 w-5 text-yellow-400 fill-current" />
+              <span className="ml-1 font-semibold">{car.rating}</span>
+              <span className="text-gray-500 text-sm ml-1">({car.review_count})</span>
             </div>
           </div>
-          
-          <div className="mt-4" data-id="oe7k3rtuq" data-path="src/components/CarCard.tsx">
-            <p className="font-bold" data-id="xcepubz04" data-path="src/components/CarCard.tsx">MYR {car.daily_rate} per day</p>
-          </div>
-          
-          <div className="mt-2 flex flex-wrap gap-2" data-id="jvrlezovl" data-path="src/components/CarCard.tsx">
-            {car.features.map((feature, index) =>
-            <div key={index} className="flex items-center px-2 py-1 bg-gray-100 rounded-md" data-id="1zwbkxbu1" data-path="src/components/CarCard.tsx">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-1 text-gray-600" viewBox="0 0 20 20" fill="currentColor" data-id="oat8z4649" data-path="src/components/CarCard.tsx">
-                  <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" data-id="gxrzas300" data-path="src/components/CarCard.tsx" />
-                </svg>
-                <span className="text-xs" data-id="gtknb7opk" data-path="src/components/CarCard.tsx">{feature}</span>
-              </div>
-            )}
-            <div className="flex items-center px-2 py-1 bg-gray-100 rounded-md" data-id="m0igr4xhv" data-path="src/components/CarCard.tsx">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-1 text-gray-600" viewBox="0 0 20 20" fill="currentColor" data-id="poc1eczf8" data-path="src/components/CarCard.tsx">
-                <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.616a1 1 0 01.894-1.79l1.599.8L9 4.323V3a1 1 0 011-1z" clipRule="evenodd" data-id="c8vjc6y98" data-path="src/components/CarCard.tsx" />
-              </svg>
-              <span className="text-xs" data-id="cea4oqmx4" data-path="src/components/CarCard.tsx">{car.category}</span>
+
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <p className="text-gray-600">Transmission</p>
+              <p className="font-medium capitalize">{car.transmission}</p>
+            </div>
+            <div>
+              <p className="text-gray-600">Fuel Type</p>
+              <p className="font-medium capitalize">{car.fuel_type}</p>
+            </div>
+            <div>
+              <p className="text-gray-600">Seats</p>
+              <p className="font-medium">{car.seats} People</p>
+            </div>
+            <div>
+              <p className="text-gray-600">Luggage</p>
+              <p className="font-medium">{car.luggage_capacity} Bags</p>
             </div>
           </div>
-          
-          <div className="mt-4" data-id="3s3ey87xb" data-path="src/components/CarCard.tsx">
-            <Button
-              onClick={onBookNow}
-              className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-medium" data-id="o3hj0gifh" data-path="src/components/CarCard.tsx">
-              Book Now
-            </Button>
+
+          <div className="flex justify-between items-center mt-6">
+            <div>
+              <p className="text-gray-600">Daily Rate</p>
+              <p className="text-2xl font-bold">RM{car.daily_rate}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleViewDetails}>
+                View Details
+              </Button>
+              <Button onClick={handleAddToCart} className="bg-aerotrav-yellow hover:bg-aerotrav-yellow/90 text-black">
+                <ShoppingCart className="h-5 w-5 mr-2" />
+                Add to Cart
+              </Button>
+            </div>
           </div>
         </div>
       </div>
-    </div>);
-
+    </div>
+  );
 };
 
 export default CarCard;

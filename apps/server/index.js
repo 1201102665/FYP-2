@@ -14,13 +14,13 @@ const __dirname = dirname(__filename);
 
 // Load environment variables with explicit path
 const envPath = join(__dirname, '.env');
-dotenv.config({ path: envPath });
+const result = dotenv.config({ path: envPath });
 
-// Debug environment variables
 console.log('🔍 Environment Debug:');
 console.log('- .env path:', envPath);
-console.log('- NODE_ENV:', process.env.NODE_ENV || 'undefined');
-console.log('- PORT:', process.env.PORT || 'undefined');
+console.log('- dotenv result:', result.error ? result.error.message : 'SUCCESS');
+console.log('- NODE_ENV:', process.env.NODE_ENV);
+console.log('- PORT:', process.env.PORT);
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -34,7 +34,7 @@ import reviewRoutes from './routes/reviews.js';
 import userRoutes from './routes/users.js';
 import adminRoutes from './routes/admin.js';
 import searchRoutes from './routes/search.js';
-
+import destinationRoutes from './routes/destinations.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -42,7 +42,11 @@ import { authenticateToken, hashPassword, generateToken, logUserActivity, genera
 import db from './config/database.js';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3001; // Default to 3001 if not set
+
+console.log('📊 Server config:');
+console.log('- PORT:', PORT);
+console.log('- NODE_ENV:', process.env.NODE_ENV || 'development');
 
 // Security middleware
 app.use(helmet({
@@ -64,29 +68,35 @@ app.use(limiter);
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: process.env.NODE_ENV === 'development' 
+    ? ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000']
+    : process.env.CORS_ORIGIN,
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 600 // Cache preflight requests for 10 minutes
 }));
 
-// General middleware
-app.use(compression());
-app.use(morgan('combined'));
+// Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Static files
-app.use('/uploads', express.static(join(__dirname, 'uploads')));
+// Compression middleware
+app.use(compression());
+
+// Logging middleware
+if (process.env.NODE_ENV !== 'production') {
+  app.use(morgan('combined'));
+}
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({
-    status: 'OK',
+  res.json({ 
+    status: 'OK', 
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV,
-    version: '1.0.0'
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
@@ -99,42 +109,48 @@ app.use('/api/packages', packageRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/search', searchRoutes);
-app.use('/api/users', authenticateToken, userRoutes);
-app.use('/api/admin', authenticateToken, adminRoutes);
+app.use('/api/destinations', destinationRoutes);
 
-// All endpoints now use proper REST API routes (/api/*)
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(join(__dirname, 'public')));
+  
+  app.get('*', (req, res) => {
+    res.sendFile(join(__dirname, 'public', 'index.html'));
+  });
+}
 
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Endpoint not found',
-    path: req.originalUrl,
-    method: req.method
+    message: `Route ${req.originalUrl} not found`
   });
 });
 
-// Error handling middleware
+// Error handling middleware (must be last)
 app.use(errorHandler);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 AeroTrav Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV}`);
-  console.log(`🌐 CORS enabled for: ${process.env.CORS_ORIGIN}`);
-  console.log(`💾 Database: ${process.env.DB_NAME}@${process.env.DB_HOST}:${process.env.DB_PORT}`);
-});
-
-// Graceful shutdown
+// Graceful shutdown handlers
 process.on('SIGINT', () => {
-  console.log('\n🔄 Shutting down gracefully...');
+  console.log('\n🛑 Received SIGINT. Graceful shutdown...');
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.log('\n🔄 Shutting down gracefully...');
+  console.log('\n🛑 Received SIGTERM. Graceful shutdown...');
   process.exit(0);
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`🚀 AeroTrav Server running on port ${PORT}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🌐 CORS enabled for: ${process.env.CORS_ORIGIN || 'development origins'}`);
+  console.log(`💾 Database: ${process.env.DB_NAME}@${process.env.DB_HOST}:${process.env.DB_PORT}`);
 });
 
 export default app; 

@@ -249,108 +249,14 @@ router.get('/history', asyncHandler(async (req, res) => {
   }
 }));
 
-// Enhanced Hotels Search - migrated from search_hotels.php
-router.get('/hotels', asyncHandler(async (req, res) => {
-  const {
-    destination = '',
-    checkin_date = '',
-    checkout_date = '',
-    min_price = 0,
-    max_price = 999999,
-    guests = 1,
-    rooms = 1,
-    rating = 0,
-    amenities = '',
-    hotel_type = '',
-    sort_by = '',
-    page = 1,
-    limit = 10
-  } = req.query;
-
-  const offset = (parseInt(page) - 1) * parseInt(limit);
-
+// Simple hotels endpoint for testing
+router.get('/hotels-simple', async (req, res) => {
   try {
-    // Build WHERE clause based on filters
-    const whereConditions = ['status = ?'];
-    const values = ['active'];
+    const hotels = await db.query(
+      'SELECT id, name, description, destination, location, price_per_night, images, amenities, rating, hotel_type, max_guests FROM hotels WHERE status = ? ORDER BY rating DESC LIMIT 20',
+      ['active']
+    );
 
-    if (destination) {
-      whereConditions.push('(destination LIKE ? OR location LIKE ? OR name LIKE ?)');
-      values.push(`%${destination}%`, `%${destination}%`, `%${destination}%`);
-    }
-
-    if (parseFloat(min_price) > 0) {
-      whereConditions.push('price_per_night >= ?');
-      values.push(parseFloat(min_price));
-    }
-
-    if (parseFloat(max_price) < 999999) {
-      whereConditions.push('price_per_night <= ?');
-      values.push(parseFloat(max_price));
-    }
-
-    if (parseInt(guests) > 0) {
-      whereConditions.push('max_guests >= ?');
-      values.push(parseInt(guests));
-    }
-
-    if (parseFloat(rating) > 0) {
-      whereConditions.push('rating >= ?');
-      values.push(parseFloat(rating));
-    }
-
-    if (hotel_type && hotel_type !== 'all') {
-      whereConditions.push('hotel_type = ?');
-      values.push(hotel_type);
-    }
-
-    if (amenities) {
-      const amenityList = amenities.split(',').map(a => a.trim());
-      amenityList.forEach(amenity => {
-        whereConditions.push('amenities LIKE ?');
-        values.push(`%${amenity}%`);
-      });
-    }
-
-    // Build ORDER BY clause
-    let orderBy = 'rating DESC, price_per_night ASC';
-    switch (sort_by) {
-      case 'price_low':
-        orderBy = 'price_per_night ASC';
-        break;
-      case 'price_high':
-        orderBy = 'price_per_night DESC';
-        break;
-      case 'rating_high':
-        orderBy = 'rating DESC';
-        break;
-      case 'rating_low':
-        orderBy = 'rating ASC';
-        break;
-      case 'name':
-        orderBy = 'name ASC';
-        break;
-    }
-
-    const whereClause = whereConditions.join(' AND ');
-    
-    // Get hotels
-    const hotels = await db.query(`
-      SELECT 
-        id, name, description, destination, location, price_per_night,
-        images, amenities, rating, hotel_type, max_guests, created_at
-      FROM hotels 
-      WHERE ${whereClause} 
-      ORDER BY ${orderBy} 
-      LIMIT ? OFFSET ?
-    `, [...values, parseInt(limit), offset]);
-
-    // Get total count for pagination
-    const countResult = await db.queryOne(`
-      SELECT COUNT(*) as total FROM hotels WHERE ${whereClause}
-    `, values);
-
-    // Format hotels data
     const formattedHotels = hotels.map(hotel => ({
       id: parseInt(hotel.id),
       name: hotel.name,
@@ -362,54 +268,157 @@ router.get('/hotels', asyncHandler(async (req, res) => {
       amenities: JSON.parse(hotel.amenities || '[]'),
       rating: parseFloat(hotel.rating),
       hotel_type: hotel.hotel_type,
-      max_guests: parseInt(hotel.max_guests),
-      created_at: hotel.created_at
+      max_guests: parseInt(hotel.max_guests)
     }));
-
-    // Log search activity
-    if (req.user) {
-      await logUserActivity(req.user.id, req.ip, 'hotel_search', {
-        destination,
-        checkin_date,
-        checkout_date,
-        guests,
-        rooms,
-        user_agent: req.get('User-Agent')
-      });
-    }
 
     res.json({
       success: true,
       data: {
         hotels: formattedHotels,
         pagination: {
-          current_page: parseInt(page),
-          per_page: parseInt(limit),
-          total: parseInt(countResult.total),
-          total_pages: Math.ceil(countResult.total / parseInt(limit)),
-          has_more: (offset + parseInt(limit)) < countResult.total
-        },
-        search_criteria: {
-          destination,
-          checkin_date,
-          checkout_date,
-          min_price: parseFloat(min_price),
-          max_price: parseFloat(max_price),
-          guests: parseInt(guests),
-          rooms: parseInt(rooms),
-          rating: parseFloat(rating),
-          amenities,
-          hotel_type,
-          sort_by
+          current_page: 1,
+          per_page: 20,
+          total: formattedHotels.length,
+          total_pages: 1,
+          has_more: false
         }
+      }
+    });
+  } catch (error) {
+    console.error('Simple hotels error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching hotels',
+      error: error.message
+    });
+  }
+});
+
+// Hotel search endpoint - integrated with hotels.js router
+router.get('/hotels', asyncHandler(async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 12;
+  const offset = (page - 1) * limit;
+
+  try {
+    console.log('🏨 Search/Browse hotels - Page:', page, 'Limit:', limit);
+
+    // Get hotels with their cheapest room price
+    const hotelsQuery = `
+      SELECT 
+        h.*,
+        MIN(hr.base_price) as min_price,
+        COUNT(hr.id) as room_count
+      FROM hotels h
+      LEFT JOIN hotel_rooms hr ON h.id = hr.hotel_id
+      WHERE h.status = 'active'
+      GROUP BY h.id
+      ORDER BY h.user_rating DESC, h.star_rating DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const hotels = await db.query(hotelsQuery, [limit, offset]);
+    
+    // Get total count for pagination
+    const countResult = await db.queryOne('SELECT COUNT(*) as total FROM hotels WHERE status = "active"');
+    const total = countResult.total;
+
+    // Helper function to parse JSON fields safely
+    const parseJsonField = (field) => {
+      if (!field) return [];
+      if (typeof field === 'string') {
+        try {
+          return JSON.parse(field);
+        } catch (e) {
+          return [];
+        }
+      }
+      return field;
+    };
+
+    // Get rooms for each hotel
+    const hotelIds = hotels.map(h => h.id);
+    let rooms = [];
+    
+    if (hotelIds.length > 0) {
+      const roomsQuery = `
+        SELECT * FROM hotel_rooms 
+        WHERE hotel_id IN (${hotelIds.map(() => '?').join(',')})
+        ORDER BY base_price ASC
+      `;
+      rooms = await db.query(roomsQuery, hotelIds);
+    }
+
+    // Group rooms by hotel
+    const roomsByHotel = rooms.reduce((acc, room) => {
+      if (!acc[room.hotel_id]) acc[room.hotel_id] = [];
+      acc[room.hotel_id].push(room);
+      return acc;
+    }, {});
+
+    // Transform hotel data
+    const transformedHotels = hotels.map(hotel => ({
+      id: hotel.id,
+      name: hotel.name,
+      chain: hotel.chain,
+      category: hotel.category,
+      star_rating: parseFloat(hotel.star_rating || 0),
+      user_rating: parseFloat(hotel.user_rating || 0),
+      rating: parseFloat(hotel.user_rating || 0), // Alias for compatibility
+      address: hotel.address,
+      city: hotel.city,
+      country: hotel.country,
+      location: `${hotel.city}, ${hotel.country}`,
+      destination: hotel.city,
+      latitude: parseFloat(hotel.latitude || 0),
+      longitude: parseFloat(hotel.longitude || 0),
+      description: hotel.description,
+      amenities: parseJsonField(hotel.amenities),
+      images: parseJsonField(hotel.images),
+      check_in_time: hotel.check_in_time,
+      check_out_time: hotel.check_out_time,
+      cancellation_policy: hotel.cancellation_policy,
+      contact_email: hotel.contact_email,
+      contact_phone: hotel.contact_phone,
+      website: hotel.website,
+      status: hotel.status,
+      created_at: hotel.created_at,
+      updated_at: hotel.updated_at,
+      // Calculate price from rooms if available
+      price_per_night: roomsByHotel[hotel.id] && roomsByHotel[hotel.id].length > 0 
+        ? Math.min(...roomsByHotel[hotel.id].map(r => parseFloat(r.base_price))) 
+        : 0,
+      hotel_type: hotel.category,
+      max_guests: roomsByHotel[hotel.id] && roomsByHotel[hotel.id].length > 0 
+        ? Math.max(...roomsByHotel[hotel.id].map(r => parseInt(r.max_occupancy))) 
+        : 2
+    }));
+
+    const pagination = {
+      current_page: page,
+      per_page: limit,
+      total_results: total,
+      total_pages: Math.ceil(total / limit),
+      has_next_page: page < Math.ceil(total / limit),
+      has_prev_page: page > 1
+    };
+
+    console.log('✅ Found', transformedHotels.length, 'hotels');
+
+    res.json({
+      success: true,
+      data: {
+        hotels: transformedHotels,
+        pagination
       }
     });
 
   } catch (error) {
-    console.error('Hotel search error:', error);
+    console.error('❌ Error browsing hotels:', error);
     res.status(500).json({
       success: false,
-      message: 'Error searching hotels'
+      message: 'Error fetching hotels',
+      error: error.message
     });
   }
 }));

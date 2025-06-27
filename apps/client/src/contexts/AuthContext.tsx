@@ -51,7 +51,7 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
       }
 
       // Call the PHP backend API
-      const response = await fetch('/login_submit.php', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -62,7 +62,19 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
         })
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        const text = await response.text();
+        data = text ? JSON.parse(text) : {};
+      } catch (error) {
+        console.error('Login error: Failed to parse JSON', error);
+        toast({
+          title: "Login Failed",
+          description: "Network error occurred. Please try again.",
+          variant: "destructive"
+        });
+        return false;
+      }
 
       if (data.success) {
         // Create user object from response
@@ -120,7 +132,7 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
       console.log('AuthContext: Attempting signup with data:', { name, email, phone });
 
       // Call the PHP backend API
-      const response = await fetch('/signup_submit.php', {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -151,10 +163,21 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
       }
 
       if (!response.ok) {
-        console.error('AuthContext: HTTP error:', response.status, response.statusText);
+        let errorMsg = `Server error: ${response.status} ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData?.message) {
+            errorMsg = errorData.message;
+          } else if (errorData?.error?.details?.[0]?.message) {
+            errorMsg = errorData.error.details[0].message;
+          }
+        } catch (e) {
+          // Ignore JSON parse errors, use default errorMsg
+        }
+        console.error('AuthContext: HTTP error:', response.status, response.statusText, errorMsg);
         toast({
           title: "Registration Failed",
-          description: `Server error: ${response.status} ${response.statusText}`,
+          description: errorMsg,
           variant: "destructive"
         });
         return false;

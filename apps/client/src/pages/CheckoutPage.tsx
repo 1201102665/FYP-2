@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCart } from '@/contexts/CartContext';
+import { useCartContext } from '@/contexts/CartContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -51,7 +51,7 @@ interface ContactInfo {
 
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
-  const { items, getTotalPrice } = useCart();
+  const { items, total } = useCartContext();
   
   const [contactInfo, setContactInfo] = useState<ContactInfo>({
     email: '',
@@ -127,7 +127,7 @@ const CheckoutPage: React.FC = () => {
   };
 
   const calculateTotal = () => {
-    const subtotal = getTotalPrice();
+    const subtotal = total;
     const serviceFee = 25;
     const taxes = Math.round(subtotal * 0.08);
     return subtotal + serviceFee + taxes;
@@ -519,7 +519,7 @@ const CheckoutPage: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Subtotal</span>
-                      <span>${getTotalPrice()}</span>
+                      <span>${total}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Service Fee</span>
@@ -527,7 +527,7 @@ const CheckoutPage: React.FC = () => {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Taxes & Fees</span>
-                      <span>${Math.round(getTotalPrice() * 0.08)}</span>
+                      <span>${Math.round(total * 0.08)}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between text-lg font-semibold">

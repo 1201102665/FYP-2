@@ -13,13 +13,13 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { useCart } from '@/contexts/CartContext';
+import { useCartContext } from '@/contexts/CartContext';
 import { ShoppingCart, X, Plus, Minus, Trash2, Calendar, MapPin, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 const CartDropdown: React.FC = () => {
-  const { items, removeItem, updateQuantity, getTotalPrice, getItemCount, clearCart } = useCart();
+  const { items, removeFromCart, updateQuantity, total, itemCount, clearCart } = useCartContext();
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -53,8 +53,7 @@ const CartDropdown: React.FC = () => {
     }
   };
 
-  const itemCount = getItemCount();
-  const totalPrice = getTotalPrice();
+  const totalPrice = total;
 
   return (
     <Sheet data-id="nmt670v83" data-path="src/components/CartDropdown.tsx">
@@ -123,7 +122,7 @@ const CartDropdown: React.FC = () => {
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6"
-                      onClick={() => removeItem(item.id)} data-id="y10zawaw9" data-path="src/components/CartDropdown.tsx">
+                      onClick={() => removeFromCart(item.id)} data-id="y10zawaw9" data-path="src/components/CartDropdown.tsx">
 
                           <X className="h-3 w-3" data-id="1a00grr1d" data-path="src/components/CartDropdown.tsx" />
                         </Button>

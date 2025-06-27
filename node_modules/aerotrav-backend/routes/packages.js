@@ -5,6 +5,59 @@ import db from '../config/database.js';
 
 const router = express.Router();
 
+// Get all packages - main endpoint for package list page
+router.get('/', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Backend: Getting all packages...');
+    
+    const packages = await db.query(`
+      SELECT 
+        id, name, description, destination_city, destination_country,
+        duration_days, duration_nights, base_price, category, 
+        highlights, images, featured, difficulty_level,
+        included_items, excluded_items, status, created_at
+      FROM packages 
+      WHERE status = 'active'
+      ORDER BY featured DESC, created_at DESC
+    `);
+
+    console.log('📦 Backend: Found packages:', packages.length);
+
+    // Format packages data for frontend
+    const formattedPackages = packages.map(pkg => ({
+      id: parseInt(pkg.id),
+      name: pkg.name,
+      description: pkg.description,
+      destination: `${pkg.destination_city}, ${pkg.destination_country}`,
+      destination_city: pkg.destination_city,
+      destination_country: pkg.destination_country,
+      duration_days: parseInt(pkg.duration_days),
+      duration_nights: parseInt(pkg.duration_nights),
+      base_price: parseFloat(pkg.base_price),
+      category: pkg.category,
+      highlights: pkg.highlights ? JSON.parse(pkg.highlights) : [],
+      images: pkg.images ? JSON.parse(pkg.images) : [],
+      featured: Boolean(pkg.featured),
+      difficulty_level: pkg.difficulty_level,
+      includes: pkg.included_items ? JSON.parse(pkg.included_items) : [],
+      excludes: pkg.excluded_items ? JSON.parse(pkg.excluded_items) : [],
+      status: pkg.status,
+      created_at: pkg.created_at
+    }));
+
+    console.log('✅ Backend: Formatted packages:', formattedPackages.length);
+
+    res.json(formattedPackages);
+
+  } catch (error) {
+    console.error('❌ Backend: Error getting packages:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching packages'
+    });
+  }
+}));
+
 // AI Itinerary Generator - migrated from ai_itinerary.php
 router.post('/ai-itinerary', asyncHandler(async (req, res) => {
   const { 
@@ -249,46 +302,72 @@ router.get('/search', asyncHandler(async (req, res) => {
 // Get package details
 router.get('/:packageId', asyncHandler(async (req, res) => {
   const { packageId } = req.params;
+  console.log('🔍 Getting package details for ID:', packageId);
 
   try {
     const packageData = await db.queryOne(`
       SELECT * FROM packages WHERE id = ? AND status = 'active'
     `, [packageId]);
 
+    console.log('📦 Raw package data from DB:', packageData);
+
     if (!packageData) {
+      console.log('❌ Package not found for ID:', packageId);
       return res.status(404).json({
         success: false,
         message: 'Package not found'
       });
     }
 
-    // Format package data
+    // Format package data to match frontend expectations
     const formattedPackage = {
       id: parseInt(packageData.id),
       name: packageData.name,
       description: packageData.description,
-      destination: packageData.destination,
+      destination: `${packageData.destination_city}, ${packageData.destination_country}`,
+      destination_city: packageData.destination_city,
+      destination_country: packageData.destination_country,
       duration_days: parseInt(packageData.duration_days),
-      price: parseFloat(packageData.price),
-      includes: JSON.parse(packageData.includes || '[]'),
-      excludes: JSON.parse(packageData.excludes || '[]'),
-      itinerary: JSON.parse(packageData.itinerary || '[]'),
-      images: JSON.parse(packageData.images || '[]'),
-      max_people: parseInt(packageData.max_people),
+      duration_nights: parseInt(packageData.duration_nights),
+      price: parseFloat(packageData.base_price),
+      base_price: parseFloat(packageData.base_price),
+      child_price: packageData.child_price ? parseFloat(packageData.child_price) : null,
+      single_supplement: packageData.single_supplement ? parseFloat(packageData.single_supplement) : null,
+      category: packageData.category,
+      min_travelers: parseInt(packageData.min_travelers),
+      max_travelers: parseInt(packageData.max_travelers),
+      // Parse JSON fields safely
+      highlights: packageData.highlights ? JSON.parse(packageData.highlights) : [],
+      itinerary: packageData.itinerary ? JSON.parse(packageData.itinerary) : [],
+      includes: packageData.included_items ? JSON.parse(packageData.included_items) : [],
+      excludes: packageData.excluded_items ? JSON.parse(packageData.excluded_items) : [],
+      images: packageData.images ? JSON.parse(packageData.images) : [],
+      available_dates: packageData.available_dates ? JSON.parse(packageData.available_dates) : [],
+      // Additional fields
       difficulty_level: packageData.difficulty_level,
-      season: packageData.season,
-      created_at: packageData.created_at
+      physical_requirements: packageData.physical_requirements,
+      recommended_age_min: packageData.recommended_age_min,
+      recommended_age_max: packageData.recommended_age_max,
+      group_size_min: parseInt(packageData.group_size_min),
+      group_size_max: parseInt(packageData.group_size_max),
+      guide_included: Boolean(packageData.guide_included),
+      meals_included: packageData.meals_included,
+      accommodation_level: packageData.accommodation_level,
+      booking_deadline_days: parseInt(packageData.booking_deadline_days),
+      cancellation_policy: packageData.cancellation_policy,
+      featured: Boolean(packageData.featured),
+      status: packageData.status,
+      created_at: packageData.created_at,
+      updated_at: packageData.updated_at
     };
 
-    res.json({
-      success: true,
-      data: {
-        package: formattedPackage
-      }
-    });
+    console.log('✅ Formatted package data:', formattedPackage);
+
+    // Return package data directly (not wrapped in success/data structure)
+    res.json(formattedPackage);
 
   } catch (error) {
-    console.error('Get package details error:', error);
+    console.error('❌ Get package details error:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching package details'

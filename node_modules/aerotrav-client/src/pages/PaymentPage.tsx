@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useCart } from '@/contexts/CartContext';
+import { useCartContext } from '@/contexts/CartContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import {
   Car,
   Package
 } from 'lucide-react';
+import bookingService from '@/services/bookingService';
 
 interface PaymentInfo {
   cardNumber: string;
@@ -41,7 +42,7 @@ interface PaymentInfo {
 const PaymentPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { items, clearCart } = useCart();
+  const { items, clearCart } = useCartContext();
   const { toast } = useToast();
 
   const checkoutData = location.state?.checkoutData;
@@ -155,8 +156,31 @@ const PaymentPage: React.FC = () => {
       // Simulate payment processing
       await new Promise(resolve => setTimeout(resolve, 3000));
 
-      // Generate booking reference
-      const bookingRef = 'AT' + Date.now().toString().slice(-6);
+      // Call booking API
+      if (!checkoutData || !checkoutData.contactInfo || !checkoutData.travelers) {
+        setErrorMessage('Missing checkout data.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Get user info (if logged in)
+      const userId = (typeof window !== 'undefined' && localStorage.getItem('userId')) || undefined;
+      const userEmail = checkoutData.contactInfo.email;
+      const userName = checkoutData.travelers[0]?.firstName + ' ' + checkoutData.travelers[0]?.lastName;
+      const paymentMethod = 'credit_card';
+      const paymentIntentId = undefined; // Not used in this flow
+      const totalAmount = checkoutData.total;
+      const items = cartItems;
+
+      const bookingResponse = await bookingService.createBooking(
+        userId || '',
+        userEmail,
+        userName,
+        items,
+        paymentMethod,
+        paymentIntentId,
+        totalAmount
+      );
 
       // Clear cart
       clearCart();
@@ -164,26 +188,25 @@ const PaymentPage: React.FC = () => {
       // Navigate to success page with booking details
       navigate('/payment-success', {
         state: {
-          bookingReference: bookingRef,
+          bookingReference: bookingResponse.bookingReference,
           checkoutData,
           cartItems,
-          paymentAmount: checkoutData.total,
+          paymentAmount: totalAmount,
           bookingDate: new Date().toISOString()
         }
       });
 
       toast({
-        title: "Payment Successful!",
-        description: `Your booking has been confirmed. Reference: ${bookingRef}`,
-        variant: "default"
+        title: 'Payment Successful!',
+        description: `Your booking has been confirmed. Reference: ${bookingResponse.bookingReference}`,
+        variant: 'default'
       });
-
     } catch (error) {
-      setErrorMessage('Payment processing failed. Please try again.');
+      setErrorMessage('Booking failed. Please try again.');
       toast({
-        title: "Payment Failed",
-        description: "There was an error processing your payment. Please try again.",
-        variant: "destructive"
+        title: 'Booking Failed',
+        description: 'There was an error saving your booking. Please try again.',
+        variant: 'destructive'
       });
     } finally {
       setIsProcessing(false);
@@ -250,7 +273,7 @@ const PaymentPage: React.FC = () => {
                       type="text"
                       maxLength={19}
                       value={paymentInfo.cardNumber}
-                      onChange={(e) => updatePaymentInfo('cardNumber', formatCardNumber(e.target.value))}
+                      onChange={(e) => updatePaymentInfo('cardNumber', e.target.value)}
                       placeholder="1234 5678 9012 3456"
                       required
                     />
@@ -264,7 +287,7 @@ const PaymentPage: React.FC = () => {
                         type="text"
                         maxLength={5}
                         value={paymentInfo.expiryDate}
-                        onChange={(e) => updatePaymentInfo('expiryDate', formatExpiryDate(e.target.value))}
+                        onChange={(e) => updatePaymentInfo('expiryDate', e.target.value)}
                         placeholder="MM/YY"
                         required
                       />
@@ -276,7 +299,7 @@ const PaymentPage: React.FC = () => {
                         type="text"
                         maxLength={4}
                         value={paymentInfo.cvv}
-                        onChange={(e) => updatePaymentInfo('cvv', e.target.value.replace(/\D/g, ''))}
+                        onChange={(e) => updatePaymentInfo('cvv', e.target.value)}
                         placeholder="123"
                         required
                       />

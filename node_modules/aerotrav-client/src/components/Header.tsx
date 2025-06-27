@@ -15,14 +15,14 @@ import {
 import Logo from './Logo';
 import CartDropdown from './CartDropdown';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCart } from '@/contexts/CartContext';
+import { useCartContext } from '@/contexts/CartContext';
 
 interface HeaderProps {}
 
 const Header = ({}: HeaderProps) => {
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
-  const { getItemCount } = useCart();
+  const { itemCount } = useCartContext();
 
   const navigationItems = [
     { name: "Flights", icon: Plane, path: "/flights" },
@@ -147,7 +147,7 @@ const Header = ({}: HeaderProps) => {
                       </Link>
                       <Link to="/cart" className="flex items-center space-x-3 px-3 py-3 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100">
                         <ShoppingCart className="h-5 w-5" />
-                        <span>Cart ({getItemCount()})</span>
+                        <span>Cart ({itemCount})</span>
                       </Link>
                     </>
                   )}

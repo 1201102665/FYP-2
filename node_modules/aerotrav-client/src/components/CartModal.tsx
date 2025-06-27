@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useCart } from "@/contexts/CartContext";
+import { useCartContext } from "@/contexts/CartContext";
 
 interface CartModalProps {
   isOpen: boolean;
@@ -13,7 +13,7 @@ const CartModal = ({ isOpen, onClose }: CartModalProps) => {
 
   if (!isOpen) return null;
 
-  const { getItemCount } = useCart();
+  const { itemCount } = useCartContext();
 
   const handleViewCart = () => {
     navigate('/cart'); // Navigate to cart page
@@ -27,7 +27,7 @@ const CartModal = ({ isOpen, onClose }: CartModalProps) => {
           Item Added to Cart
         </h2>
         <p className="text-center text-gray-600 mb-6" data-id="x19io70n8" data-path="src/components/CartModal.tsx">
-          You have {getItemCount()} item(s) in your cart
+          You have {itemCount} item(s) in your cart
         </p>
         
         <div className="flex gap-4 justify-center" data-id="4coejyzsw" data-path="src/components/CartModal.tsx">

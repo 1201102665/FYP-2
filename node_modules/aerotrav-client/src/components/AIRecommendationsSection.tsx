@@ -84,12 +84,15 @@ const AIRecommendationsSection: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [destinationsData, packagesData] = await Promise.all([
+        const [destinationsResponse, packagesResponse] = await Promise.all([
           getDestinations(),
           getPackages()
         ]);
-        setDestinations(destinationsData);
-        setPackages(packagesData);
+        // Use .data if the response is an object with a data property, otherwise fallback
+        const destinationsArray = Array.isArray(destinationsResponse.data) ? destinationsResponse.data : destinationsResponse;
+        const packagesArray = Array.isArray(packagesResponse.data) ? packagesResponse.data : packagesResponse;
+        setDestinations(destinationsArray);
+        setPackages(packagesArray);
       } catch (error) {
         console.error('Error fetching recommendations data:', error);
         setDestinations([]);
@@ -104,7 +107,7 @@ const AIRecommendationsSection: React.FC = () => {
 
   // Transform data for recommendations
   const recommendations: RecommendationCardProps[] = [
-    ...destinations.slice(0, 4).map((dest, index) => ({
+    ...(Array.isArray(destinations) ? destinations.slice(0, 4).map((dest, index) => ({
       id: dest.id,
       title: dest.name,
       subtitle: dest.description?.substring(0, 50) + '...' || 'Amazing destination',
@@ -113,8 +116,8 @@ const AIRecommendationsSection: React.FC = () => {
       price: dest.price || 899,
       tags: ['Popular', 'Trending'],
       type: 'destination' as const
-    })),
-    ...packages.slice(0, 2).map((pkg, index) => ({
+    })) : []),
+    ...(Array.isArray(packages) ? packages.slice(0, 2).map((pkg, index) => ({
       id: pkg.id,
       title: pkg.name,
       subtitle: pkg.destinations?.join(', ') || pkg.description?.substring(0, 50) + '...' || 'Travel package',
@@ -123,7 +126,7 @@ const AIRecommendationsSection: React.FC = () => {
       price: pkg.price || 1299,
       tags: pkg.included_services?.slice(0, 2) || ['All-inclusive', 'Premium'],
       type: 'package' as const
-    }))
+    })) : [])
   ];
 
   if (isLoading) {

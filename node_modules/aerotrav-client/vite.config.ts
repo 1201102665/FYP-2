@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => ({
         target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => path.replace(/^\/api/, '/api'),
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
             console.log('proxy error', err);
@@ -25,22 +26,10 @@ export default defineConfig(({ mode }) => ({
           });
         },
       }
-      // All legacy PHP endpoints removed - now handled by Node.js /api/* routes
-      // ✅ /signup_submit.php → /api/auth/register
-      // ✅ /login_submit.php → /api/auth/login
-      // ✅ /search_hotels.php → /api/search/hotels
-      // ✅ /search_flights.php → /api/search/flights
-      // ✅ /search_cars.php → /api/search/cars
-      // ✅ /search_packages.php → /api/search/packages
-      // ✅ /ai_itinerary.php → /api/packages/ai-itinerary
-      // ✅ /cart_add.php → /api/cart/add
-      // ✅ /cart_remove.php → /api/cart/remove
-      // ✅ /cart_view.php → /api/cart
-      // ✅ /checkout_submit.php → /api/bookings/checkout
+      
     }
   },
-  plugins: [
-  react()],
+  plugins: [react()],
 
   resolve: {
     alias: {

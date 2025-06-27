@@ -1,5 +1,5 @@
 import { get, post, put } from './api';
-import { CartItem } from '@/contexts/CartContext';
+import type { CartItem } from '@/contexts/CartContext';
 
 export interface Booking {
   id: number;
@@ -25,7 +25,7 @@ export interface BookingItem {
   item_name: string;
   quantity: number;
   price: number;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
 }
 
 export interface PaymentIntentResponse {
@@ -80,9 +80,49 @@ status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED')
   await put<void>(`/api/bookings/${id}/status`, { status });
 };
 
+// Create a car booking with driver details
+export const createCarBooking = async (
+  carId: number,
+  driverDetails: unknown,
+  paymentDetails: unknown,
+  pickupDate: string,
+  dropoffDate: string,
+  pickupLocation: string,
+  totalAmount: number,
+  bookingDetails: unknown
+): Promise<{
+  booking_id: number;
+  booking_reference: string;
+  total_amount: number;
+  car_details: unknown;
+  driver_details: unknown;
+  booking_status: string;
+  payment_status: string;
+}> => {
+  return await post<{
+    booking_id: number;
+    booking_reference: string;
+    total_amount: number;
+    car_details: unknown;
+    driver_details: unknown;
+    booking_status: string;
+    payment_status: string;
+  }>('/api/bookings/car-booking', {
+    carId,
+    driverDetails,
+    paymentDetails,
+    pickupDate,
+    dropoffDate,
+    pickupLocation,
+    totalAmount,
+    bookingDetails
+  });
+};
+
 export default {
   createPaymentIntent,
   createBooking,
+  createCarBooking,
   getUserBookings,
   getBooking,
   updateBookingStatus

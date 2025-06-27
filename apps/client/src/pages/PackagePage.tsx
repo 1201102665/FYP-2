@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import Footer from '@/components/Footer';
 import PackageCard from '@/components/PackageCard';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Breadcrumb from '@/components/Breadcrumb';
+import { getPackages } from '@/services/packageService';
 import { 
   Search, 
   MapPin, 
@@ -32,196 +33,91 @@ import {
   DollarSign
 } from 'lucide-react';
 
-// Enhanced mock data with more realistic information
-const ENHANCED_PACKAGES = [
-  {
-    id: '1',
-    title: 'Bali Paradise Escape',
-    description: 'Immerse yourself in the beauty of Bali with this all-inclusive package featuring luxury accommodations, cultural experiences, and breathtaking beaches.',
-    detailedDescription: 'Experience the best of Bali with 7 nights in premium beachfront resorts, daily breakfast, spa treatments, cultural tours to ancient temples, and traditional Balinese cooking classes.',
-    price: 1299,
-    originalPrice: 1529,
-    duration: '7 nights',
-    destination: 'Bali, Indonesia',
-    imageUrl: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=600',
-    gallery: [
-      'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=400',
-      'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400',
-      'https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?w=400'
-    ],
-    flightIncluded: true,
-    hotelIncluded: true,
-    carIncluded: true,
-    rating: 4.8,
-    reviewCount: 342,
-    discount: 15,
-    featured: true,
-    category: 'Beach & Resort',
-    highlights: ['Private Beach Access', 'Spa Treatments', 'Cultural Tours', 'Airport Transfers'],
-    itinerary: ['Arrival & Welcome Dinner', 'Temple Tours', 'Beach Activities', 'Spa Day', 'Cultural Workshop', 'Adventure Excursion', 'Departure'],
+// Interface for package data from database
+interface DatabasePackage {
+  id: number;
+  name: string;
+  description: string;
+  destination: string;
+  destination_city: string;
+  destination_country: string;
+  duration_days: number;
+  base_price: number;
+  category: string;
+  images: string[];
+  featured: boolean;
+  difficulty_level: string;
+  highlights?: string[];
+  includes?: string[];
+  excludes?: string[];
+}
+
+// Interface for transformed package data
+interface TransformedPackage {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  duration: string;
+  destination: string;
+  imageUrl: string;
+  flightIncluded: boolean;
+  hotelIncluded: boolean;
+  carIncluded: boolean;
+  rating: number;
+  reviewCount: number;
+  discount: number;
+  featured: boolean;
+  category: string;
+  highlights: string[];
+  originalPrice: number;
+  detailedDescription: string;
+  gallery: string[];
+  itinerary: unknown[];
+  meals: string;
+  groupSize: string;
+  bestTime: string;
+  difficulty: string;
+}
+
+// Transform database package to component format
+const transformPackageData = (pkg: DatabasePackage): TransformedPackage => {
+  return {
+    id: pkg.id.toString(),
+    title: pkg.name || 'Untitled Package',
+    description: pkg.description || 'No description available',
+    price: pkg.base_price || 0,
+    duration: `${pkg.duration_days || 1} days`,
+    destination: pkg.destination || `${pkg.destination_city || 'Unknown'}, ${pkg.destination_country || 'Unknown'}`,
+    imageUrl: pkg.images && pkg.images.length > 0 ? pkg.images[0] : 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=600',
+    flightIncluded: pkg.includes ? pkg.includes.some(item => item.toLowerCase().includes('flight')) : true,
+    hotelIncluded: pkg.includes ? pkg.includes.some(item => item.toLowerCase().includes('accommodation') || item.toLowerCase().includes('hotel')) : true,
+    carIncluded: pkg.includes ? pkg.includes.some(item => item.toLowerCase().includes('car') || item.toLowerCase().includes('transfer')) : false,
+    rating: 4.5 + Math.random() * 0.5, // Generate rating between 4.5-5.0
+    reviewCount: Math.floor(Math.random() * 300) + 50,
+    discount: pkg.featured ? Math.floor(Math.random() * 20) + 10 : 0,
+    featured: pkg.featured || false,
+    category: pkg.category || 'adventure',
+    highlights: pkg.highlights || [],
+    originalPrice: pkg.base_price * 1.2,
+    detailedDescription: pkg.description || 'No description available',
+    gallery: pkg.images || [],
+    itinerary: [],
     meals: 'Breakfast Included',
     groupSize: '2-8 people',
-    bestTime: 'Apr-Oct',
-    difficulty: 'Easy'
-  },
-  {
-    id: '2',
-    title: 'Tokyo Urban Adventure',
-    description: 'Experience the perfect blend of modern technology and ancient traditions in the vibrant city of Tokyo. Includes guided tours and culinary experiences.',
-    detailedDescription: 'Discover Tokyo through 6 action-packed days including visits to iconic landmarks, traditional temples, modern districts, authentic food experiences, and cultural workshops.',
-    price: 1899,
-    originalPrice: 2199,
-    duration: '6 nights',
-    destination: 'Tokyo, Japan',
-    imageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=600',
-    gallery: [
-      'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400',
-      'https://images.unsplash.com/photo-1513407030348-c983a97b98d8?w=400',
-      'https://images.unsplash.com/photo-1542051841857-5f90071e7989?w=400'
-    ],
-    flightIncluded: true,
-    hotelIncluded: true,
-    carIncluded: false,
-    rating: 4.6,
-    reviewCount: 287,
-    discount: 14,
-    featured: false,
-    category: 'City & Culture',
-    highlights: ['Shibuya Crossing', 'Traditional Tea Ceremony', 'Sushi Making Class', 'Mt. Fuji Day Trip'],
-    itinerary: ['Arrival & City Tour', 'Traditional Tokyo', 'Modern Districts', 'Mt. Fuji Excursion', 'Food & Culture', 'Shopping & Departure'],
-    meals: 'Breakfast & 2 Dinners',
-    groupSize: '2-12 people',
-    bestTime: 'Mar-May, Sep-Nov',
-    difficulty: 'Moderate'
-  },
-  {
-    id: '3',
-    title: 'Greek Island Hopping',
-    description: 'Discover the magic of Greece with this island hopping adventure. Visit Santorini, Mykonos, and Crete with all transportation and accommodations included.',
-    detailedDescription: 'Explore three stunning Greek islands over 10 unforgettable days. Experience white-washed villages, crystal-clear waters, ancient ruins, and Mediterranean cuisine.',
-    price: 2299,
-    originalPrice: 2699,
-    duration: '10 nights',
-    destination: 'Greece',
-    imageUrl: 'https://images.unsplash.com/photo-1530841377377-3ff06c0ca713?w=600',
-    gallery: [
-      'https://images.unsplash.com/photo-1530841377377-3ff06c0ca713?w=400',
-      'https://images.unsplash.com/photo-1504640834693-3a2893de9134?w=400',
-      'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=400'
-    ],
-    flightIncluded: true,
-    hotelIncluded: true,
-    carIncluded: false,
-    rating: 4.9,
-    reviewCount: 456,
-    discount: 15,
-    featured: true,
-    category: 'Island Adventure',
-    highlights: ['Santorini Sunset', 'Mykonos Nightlife', 'Ancient Ruins', 'Private Yacht Trip'],
-    itinerary: ['Athens Arrival', 'Santorini (3 nights)', 'Mykonos (3 nights)', 'Crete (3 nights)', 'Return to Athens'],
-    meals: 'Breakfast Included',
-    groupSize: '2-16 people',
-    bestTime: 'May-Oct',
-    difficulty: 'Easy'
-  },
-  {
-    id: '4',
-    title: 'Costa Rican Rainforest Experience',
-    description: 'Explore the biodiversity of Costa Rica\'s rainforests with guided tours, zip-lining adventures, and beach relaxation at a sustainable eco-lodge.',
-    detailedDescription: 'Adventure through lush rainforests, spot exotic wildlife, experience thrilling zip-lines, relax on pristine beaches, and stay in eco-friendly accommodations.',
-    price: 1599,
-    originalPrice: 1899,
-    duration: '8 nights',
-    destination: 'Costa Rica',
-    imageUrl: 'https://images.unsplash.com/photo-1577451581377-523b0a03bb6b?w=600',
-    gallery: [
-      'https://images.unsplash.com/photo-1577451581377-523b0a03bb6b?w=400',
-      'https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?w=400',
-      'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=400'
-    ],
-    flightIncluded: true,
-    hotelIncluded: true,
-    carIncluded: true,
-    rating: 4.7,
-    reviewCount: 198,
-    discount: 16,
-    featured: false,
-    category: 'Adventure & Nature',
-    highlights: ['Zip-line Canopy Tour', 'Wildlife Spotting', 'Beach Relaxation', 'Sustainable Tourism'],
-    itinerary: ['San José Arrival', 'Rainforest Lodge', 'Adventure Activities', 'Wildlife Tours', 'Beach Transfer', 'Coast Relaxation', 'Nature Walks', 'Departure'],
-    meals: 'All Meals Included',
-    groupSize: '2-10 people',
-    bestTime: 'Dec-Apr',
-    difficulty: 'Moderate'
-  },
-  {
-    id: '5',
-    title: 'Moroccan Desert Safari',
-    description: 'Journey through the vibrant markets of Marrakech and into the Sahara Desert for a once-in-a-lifetime camping experience under the stars.',
-    detailedDescription: 'Immerse yourself in Moroccan culture with medina tours, Atlas Mountains excursions, camel trekking, and unforgettable desert camping.',
-    price: 1499,
-    originalPrice: 1749,
-    duration: '7 nights',
-    destination: 'Morocco',
-    imageUrl: 'https://images.unsplash.com/photo-1604856420566-576ba98b53cd?w=600',
-    gallery: [
-      'https://images.unsplash.com/photo-1604856420566-576ba98b53cd?w=400',
-      'https://images.unsplash.com/photo-1539650116574-75c0c6d32795?w=400',
-      'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400'
-    ],
-    flightIncluded: true,
-    hotelIncluded: true,
-    carIncluded: true,
-    rating: 4.5,
-    reviewCount: 234,
-    discount: 14,
-    featured: false,
-    category: 'Desert Adventure',
-    highlights: ['Camel Trekking', 'Desert Camping', 'Berber Culture', 'Atlas Mountains'],
-    itinerary: ['Marrakech Arrival', 'City Tours', 'Atlas Mountains', 'Desert Journey', 'Camel Trek & Camping', 'Desert Sunrise', 'Return Journey'],
-    meals: 'Breakfast & 3 Dinners',
-    groupSize: '2-12 people',
-    bestTime: 'Oct-Apr',
-    difficulty: 'Moderate'
-  },
-  {
-    id: '6',
-    title: 'New Zealand Adventure Tour',
-    description: 'Experience the stunning landscapes of New Zealand with this adventure package including hiking, bungee jumping, and exploring filming locations from Lord of the Rings.',
-    detailedDescription: 'Discover both North and South Islands with thrilling adventures, breathtaking scenery, movie locations, and unique wildlife encounters.',
-    price: 2599,
-    originalPrice: 2999,
-    duration: '12 nights',
-    destination: 'New Zealand',
-    imageUrl: 'https://images.unsplash.com/photo-1507699622108-4be3abd695ad?w=600',
-    gallery: [
-      'https://images.unsplash.com/photo-1507699622108-4be3abd695ad?w=400',
-      'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400',
-      'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400'
-    ],
-    flightIncluded: true,
-    hotelIncluded: true,
-    carIncluded: true,
-    rating: 4.9,
-    reviewCount: 387,
-    discount: 13,
-    featured: true,
-    category: 'Adventure & Nature',
-    highlights: ['Bungee Jumping', 'LOTR Locations', 'Milford Sound', 'Glacier Hiking'],
-    itinerary: ['Auckland Arrival', 'North Island Tours', 'Wellington', 'South Island Ferry', 'Adventure Capital', 'Milford Sound', 'Glaciers & Mountains', 'Departure'],
-    meals: 'Breakfast Included',
-    groupSize: '2-14 people',
-    bestTime: 'Nov-Mar',
-    difficulty: 'Challenging'
-  }
-];
+    bestTime: 'Year Round',
+    difficulty: pkg.difficulty_level || 'Easy'
+  };
+};
 
 const PackagePage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const locationState = location.state;
   
-  const [isLoading, setIsLoading] = useState(false);
+  const [packages, setPackages] = useState<TransformedPackage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState('featured');
   
   const [searchQuery, setSearchQuery] = useState(locationState?.destination || '');
@@ -238,9 +134,35 @@ const PackagePage: React.FC = () => {
     }
   });
 
+  // Fetch packages from database
+  useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        console.log('🔍 Frontend: Fetching packages from database...');
+        
+        const data = await getPackages();
+        console.log('📦 Frontend: Raw packages data:', data);
+        
+        const transformedPackages = (data as unknown as DatabasePackage[]).map(transformPackageData);
+        console.log('✅ Frontend: Transformed packages:', transformedPackages);
+        
+        setPackages(transformedPackages);
+      } catch (err) {
+        console.error('❌ Frontend: Error fetching packages:', err);
+        setError('Failed to load packages. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPackages();
+  }, []);
+
   // Apply filters and sorting
   const filteredAndSortedPackages = React.useMemo(() => {
-    let filtered = ENHANCED_PACKAGES.filter((pkg) => {
+    const filtered = packages.filter((pkg) => {
       // Search query filter
       const matchesSearch = pkg.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         pkg.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -284,7 +206,7 @@ const PackagePage: React.FC = () => {
     });
 
     return filtered;
-  }, [searchQuery, filters, sortBy]);
+  }, [packages, searchQuery, filters, sortBy]);
 
   const handleIncludeFilterChange = (filterType: keyof typeof filters.included) => {
     setFilters(prev => ({
@@ -298,13 +220,24 @@ const PackagePage: React.FC = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1500);
+    // Search is handled by the filteredAndSortedPackages useMemo
   };
 
   const handleRefreshSearch = () => {
     setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1500);
+    // Refetch packages
+    const fetchPackages = async () => {
+      try {
+        const data = await getPackages();
+        const transformedPackages = (data as unknown as DatabasePackage[]).map(transformPackageData);
+        setPackages(transformedPackages);
+      } catch (err) {
+        setError('Failed to refresh packages.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchPackages();
   };
 
   const breadcrumbItems = [
@@ -312,16 +245,38 @@ const PackagePage: React.FC = () => {
     { label: 'Search Results', active: true }
   ];
 
-  const categories = ['all', 'Beach & Resort', 'City & Culture', 'Adventure & Nature', 'Island Adventure', 'Desert Adventure'];
-  const destinations = ['all', 'Bali', 'Japan', 'Greece', 'Costa Rica', 'Morocco', 'New Zealand'];
+  // Dynamic categories and destinations from loaded packages
+  const categories = ['all', ...Array.from(new Set(packages.map(pkg => pkg.category).filter(cat => cat && cat.trim() !== '')))];
+  const destinations = ['all', ...Array.from(new Set(packages.map(pkg => pkg.destination.split(',')[0]).filter(dest => dest && dest.trim() !== '')))];
   const durations = ['all', '5-7 days', '8-10 days', '10+ days'];
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="page-layout bg-gray-50">
         <Header />
-        <div className="container mx-auto px-4 py-16">
-          <LoadingSpinner size="lg" text="Finding amazing travel packages for you..." />
+        <div className="page-content">
+          <div className="container mx-auto px-4 py-16">
+            <LoadingSpinner size="lg" text="Loading amazing travel packages..." />
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="page-layout bg-gray-50">
+        <Header />
+        <div className="page-content">
+          <div className="container mx-auto px-4 py-16 text-center">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Error Loading Packages</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={handleRefreshSearch} className="bg-aerotrav-blue hover:bg-aerotrav-blue-600">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Try Again
+            </Button>
+          </div>
         </div>
         <Footer />
       </div>
@@ -329,13 +284,14 @@ const PackagePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="page-layout bg-gray-50">
       <Header />
       
-      {/* Breadcrumb */}
-      <div className="container mx-auto px-4 py-4">
-        <Breadcrumb items={breadcrumbItems} />
-      </div>
+      <div className="page-content">
+        {/* Breadcrumb */}
+        <div className="container mx-auto px-4 py-4">
+          <Breadcrumb items={breadcrumbItems} />
+        </div>
 
       {/* Enhanced Hero Section */}
       <section className="relative bg-gradient-to-r from-aerotrav-blue to-blue-800 text-white py-16">
@@ -353,24 +309,6 @@ const PackagePage: React.FC = () => {
           
           {/* Enhanced Interactive Package Search Bar */}
           <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20 shadow-2xl max-w-6xl mx-auto">
-            {/* Package Type Selector */}
-            <div className="flex justify-center mb-6">
-              <div className="bg-white/10 rounded-full p-1 flex flex-wrap gap-1">
-                {['All Packages', 'Beach & Resort', 'Adventure', 'City Tours', 'Cultural'].map((type) => (
-                  <button
-                    key={type}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                      type === 'All Packages' 
-                        ? 'bg-aerotrav-yellow text-aerotrav-blue shadow-lg' 
-                        : 'text-white hover:bg-white/10'
-                    }`}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <form onSubmit={handleSearch} className="grid grid-cols-1 lg:grid-cols-4 gap-4">
               {/* Enhanced Search Input */}
               <div className="lg:col-span-2 group">
@@ -407,7 +345,7 @@ const PackagePage: React.FC = () => {
                     onChange={(e) => setFilters(prev => ({...prev, destination: e.target.value}))}
                     className="w-full pl-12 pr-10 py-5 bg-white/15 backdrop-blur-sm border-2 border-white/30 rounded-2xl text-white focus:outline-none focus:ring-4 focus:ring-aerotrav-yellow/50 focus:border-aerotrav-yellow transition-all duration-300 hover:bg-white/20 text-lg appearance-none cursor-pointer"
                   >
-                    {destinations.map(dest => (
+                    {destinations.filter(dest => dest && dest.trim() !== '').map(dest => (
                       <option key={dest} value={dest} className="bg-aerotrav-blue text-white py-2">
                         {dest === 'all' ? 'All Destinations' : dest}
                       </option>
@@ -435,7 +373,7 @@ const PackagePage: React.FC = () => {
                       onChange={(e) => setFilters(prev => ({...prev, duration: e.target.value}))}
                       className="w-full pl-12 pr-10 py-5 bg-white/15 backdrop-blur-sm border-2 border-white/30 rounded-2xl text-white focus:outline-none focus:ring-4 focus:ring-aerotrav-yellow/50 focus:border-aerotrav-yellow transition-all duration-300 hover:bg-white/20 text-lg appearance-none cursor-pointer"
                     >
-                      {durations.map(duration => (
+                      {durations.filter(duration => duration && duration.trim() !== '').map(duration => (
                         <option key={duration} value={duration} className="bg-aerotrav-blue text-white py-2">
                           {duration === 'all' ? 'Any Duration' : duration}
                         </option>
@@ -475,48 +413,8 @@ const PackagePage: React.FC = () => {
                 <span className="text-aerotrav-yellow font-medium">Best price guarantee</span>
               </div>
               <div className="flex items-center gap-3">
-                <Button variant="ghost" onClick={handleRefreshSearch} size="sm" className="text-white hover:bg-white/10 border border-white/20 hover:border-white/40 transition-all duration-300">
-                  <RefreshCw className="h-4 w-4 mr-1" />
-                  Refresh
-                </Button>
-                <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 border border-white/20 hover:border-white/40 transition-all duration-300">
-                  <Filter className="h-4 w-4 mr-1" />
-                  Filters
-                </Button>
+                {/* Refresh and Filters buttons removed as requested */}
               </div>
-            </div>
-
-            {/* Quick Filters */}
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="text-sm text-white/70 mr-2">Popular inclusions:</span>
-              {['Flight Included', 'Hotel Included', 'Meals Included', 'Tours Included', 'Transport Included'].map((inclusion) => (
-                <button
-                  key={inclusion}
-                  className="px-3 py-1 text-sm bg-white/10 hover:bg-aerotrav-yellow hover:text-aerotrav-blue rounded-full transition-all duration-300 text-white border border-white/20 hover:border-aerotrav-yellow"
-                >
-                  {inclusion}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12 max-w-4xl mx-auto">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-aerotrav-yellow">{ENHANCED_PACKAGES.length}+</div>
-              <div className="text-sm text-aerotrav-blue-100">Packages Available</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-aerotrav-yellow">50+</div>
-              <div className="text-sm text-aerotrav-blue-100">Destinations</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-aerotrav-yellow">15%</div>
-              <div className="text-sm text-aerotrav-blue-100">Average Savings</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-aerotrav-yellow">24/7</div>
-              <div className="text-sm text-aerotrav-blue-100">Travel Support</div>
             </div>
           </div>
         </div>
@@ -595,7 +493,7 @@ const PackagePage: React.FC = () => {
                         <SelectValue placeholder="All Categories" />
                       </SelectTrigger>
                       <SelectContent>
-                        {categories.map(category => (
+                        {categories.filter(category => category && category.trim() !== '').map(category => (
                           <SelectItem key={category} value={category}>
                             {category === 'all' ? 'All Categories' : category}
                           </SelectItem>
@@ -669,7 +567,7 @@ const PackagePage: React.FC = () => {
                         <SelectValue placeholder="Any Duration" />
                       </SelectTrigger>
                       <SelectContent>
-                        {durations.map(duration => (
+                        {durations.filter(duration => duration && duration.trim() !== '').map(duration => (
                           <SelectItem key={duration} value={duration}>
                             {duration === 'all' ? 'Any Duration' : duration}
                           </SelectItem>
@@ -754,6 +652,7 @@ const PackagePage: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
       </div>
 
       <Footer />

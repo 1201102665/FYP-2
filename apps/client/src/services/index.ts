@@ -1,6 +1,5 @@
-export * from './api';
-export * from './destinationService';
-export * from './flightService';
-export * from './hotelService';
-export * from './packageService';
-export * from './bookingService';
+export { default as api } from './api';
+export { default as bookingService } from './bookingService';
+export { default as carService } from './carService';
+export { default as destinationService } from './destinationService';
+export { default as flightService } from './flightService';

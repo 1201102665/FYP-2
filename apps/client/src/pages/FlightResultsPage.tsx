@@ -672,10 +672,12 @@ const FlightResultsPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="page-layout bg-gray-50">
         <Header />
-        <div className="container mx-auto px-4 py-16">
-          <LoadingSpinner size="lg" text="Searching for the best flights..." />
+        <div className="page-content">
+          <div className="container mx-auto px-4 py-16">
+            <LoadingSpinner size="lg" text="Searching for the best flights..." />
+          </div>
         </div>
         <Footer />
       </div>
@@ -683,186 +685,188 @@ const FlightResultsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="page-layout bg-gray-50">
       <Header />
       
-      {/* Breadcrumb */}
-      <div className="container mx-auto px-4 py-4">
-        <Breadcrumb items={breadcrumbItems} />
-      </div>
+      <div className="page-content">
+        {/* Breadcrumb */}
+        <div className="container mx-auto px-4 py-4">
+          <Breadcrumb items={breadcrumbItems} />
+        </div>
 
-      {/* Enhanced Interactive Flight Search Bar */}
-      <div className="bg-gradient-to-r from-aerotrav-blue via-aerotrav-blue-700 to-aerotrav-blue-800 py-8">
-        <div className="container mx-auto px-4">
-          <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20 shadow-2xl">
+        {/* Enhanced Interactive Flight Search Bar */}
+        <div className="bg-gradient-to-r from-aerotrav-blue via-aerotrav-blue-700 to-aerotrav-blue-800 py-8">
+          <div className="container mx-auto px-4">
+            <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20 shadow-2xl">
 
-            <div className="flex flex-col lg:flex-row items-center gap-4">
-              {/* Leaving From */}
-              <div className="flex-1 min-w-0 group">
-                <div className="relative">
-                  <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
-                    <div className="w-3 h-3 bg-aerotrav-yellow rounded-full animate-pulse"></div>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Leaving from (e.g., Kuala Lumpur (KUL))"
-                    value={searchParams.origin}
-                    onChange={(e) => setSearchParams(prev => ({ ...prev, origin: e.target.value }))}
-                    className="w-full pl-12 pr-4 py-5 bg-white/20 backdrop-blur-sm border-2 border-white/40 rounded-2xl text-white placeholder-white/60 focus:outline-none focus:ring-4 focus:ring-aerotrav-yellow/50 focus:border-aerotrav-yellow transition-all duration-300 hover:bg-white/30 focus:bg-white/30 text-lg"
-                  />
-                  <div className="absolute top-2 left-12 text-xs text-white/60 font-medium">Leaving from</div>
-                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                    <Edit className="h-4 w-4 text-white/50 group-hover:text-white transition-colors" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Enhanced Swap Button */}
-              <div className="flex-shrink-0">
-                <button className="p-3 bg-aerotrav-yellow rounded-full hover:bg-aerotrav-yellow-500 transition-all duration-300 hover:scale-110 shadow-lg hover:shadow-xl">
-                  <ArrowUpDown className="h-5 w-5 text-aerotrav-blue" />
-                </button>
-              </div>
-
-              {/* Going To */}
-              <div className="flex-1 min-w-0 group">
-                <div className="relative">
-                  <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
-                    <div className="w-3 h-3 bg-aerotrav-yellow rounded-full animate-pulse"></div>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Going to (e.g., Da Nang (DAD))"
-                    value={searchParams.destination}
-                    onChange={(e) => setSearchParams(prev => ({ ...prev, destination: e.target.value }))}
-                    className="w-full pl-12 pr-4 py-5 bg-white/20 backdrop-blur-sm border-2 border-white/40 rounded-2xl text-white placeholder-white/60 focus:outline-none focus:ring-4 focus:ring-aerotrav-yellow/50 focus:border-aerotrav-yellow transition-all duration-300 hover:bg-white/30 focus:bg-white/30 text-lg"
-                  />
-                  <div className="absolute top-2 left-12 text-xs text-white/60 font-medium">Going to</div>
-                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                    <Edit className="h-4 w-4 text-white/50 group-hover:text-white transition-colors" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Enhanced Departure Date */}
-              <div className="flex-1 min-w-0 group">
-                <div className="relative">
-                  <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
-                    <Calendar className="h-5 w-5 text-aerotrav-yellow" />
-                  </div>
-                  <input
-                    type="date"
-                    placeholder="Departure Date"
-                    value={searchParams.departDate}
-                    min={new Date().toISOString().split('T')[0]}
-                    onChange={(e) => setSearchParams(prev => ({ ...prev, departDate: e.target.value }))}
-                    className="w-full pl-12 pr-4 py-5 bg-white/20 backdrop-blur-sm border-2 border-white/40 rounded-2xl text-white placeholder-white/60 focus:outline-none focus:ring-4 focus:ring-aerotrav-yellow/50 focus:border-aerotrav-yellow transition-all duration-300 hover:bg-white/30 focus:bg-white/30 text-lg [color-scheme:dark]"
-                  />
-                  <div className="absolute top-2 left-12 text-xs text-white/60 font-medium">Departure</div>
-                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                    <Edit className="h-4 w-4 text-white/50 group-hover:text-white transition-colors" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Return Date */}
-              <div className="flex-1 min-w-0 group">
-                <div className="relative">
-                  <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
-                    <Calendar className="h-5 w-5 text-aerotrav-yellow" />
-                  </div>
-                  <input
-                    type="date"
-                    placeholder="Return Date"
-                    value={searchParams.returnDate || ''}
-                    min={searchParams.departDate || new Date().toISOString().split('T')[0]}
-                    onChange={(e) => setSearchParams(prev => ({ ...prev, returnDate: e.target.value }))}
-                    className="w-full pl-12 pr-4 py-5 bg-white/20 backdrop-blur-sm border-2 border-white/40 rounded-2xl text-white placeholder-white/60 focus:outline-none focus:ring-4 focus:ring-aerotrav-yellow/50 focus:border-aerotrav-yellow transition-all duration-300 hover:bg-white/30 focus:bg-white/30 text-lg [color-scheme:dark]"
-                  />
-                  <div className="absolute top-2 left-12 text-xs text-white/60 font-medium">Return</div>
-                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                    <Edit className="h-4 w-4 text-white/50 group-hover:text-white transition-colors" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Enhanced Travellers */}
-              <div className="flex-1 min-w-0 group">
-                <div className="relative">
-                  <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
-                    <Users className="h-5 w-5 text-aerotrav-yellow" />
-                  </div>
-                  <select
-                    value={`${searchParams.passengers || 1}-${searchParams.class || 'Economy'}`}
-                    onChange={(e) => {
-                      const [passengers, travelClass] = e.target.value.split('-');
-                      setSearchParams(prev => ({ 
-                        ...prev, 
-                        passengers: parseInt(passengers),
-                        class: travelClass
-                      }));
-                    }}
-                    className="w-full pl-12 pr-4 py-5 bg-white/20 backdrop-blur-sm border-2 border-white/40 rounded-2xl text-white focus:outline-none focus:ring-4 focus:ring-aerotrav-yellow/50 focus:border-aerotrav-yellow transition-all duration-300 hover:bg-white/30 focus:bg-white/30 text-lg"
-                  >
-                    {[1,2,3,4,5,6,7,8].map(num => (
-                      <React.Fragment key={num}>
-                        <option value={`${num}-Economy`} className="bg-aerotrav-blue text-white">
-                          {num} Adult{num > 1 ? 's' : ''} - Economy
-                        </option>
-                        <option value={`${num}-Business`} className="bg-aerotrav-blue text-white">
-                          {num} Adult{num > 1 ? 's' : ''} - Business
-                        </option>
-                        <option value={`${num}-First`} className="bg-aerotrav-blue text-white">
-                          {num} Adult{num > 1 ? 's' : ''} - First Class
-                        </option>
-                      </React.Fragment>
-                    ))}
-                  </select>
-                  <div className="absolute top-2 left-12 text-xs text-white/60 font-medium">Travellers</div>
-                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                    <Edit className="h-4 w-4 text-white/50 group-hover:text-white transition-colors" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Enhanced Search Button */}
-              <div className="flex-shrink-0">
-                <Button 
-                  onClick={handleRefreshSearch}
-                  disabled={isLoading}
-                  className="bg-gradient-to-r from-aerotrav-yellow to-yellow-400 hover:from-aerotrav-yellow-500 hover:to-yellow-500 text-aerotrav-blue font-bold px-10 py-5 rounded-2xl h-auto shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-aerotrav-blue rounded-full flex items-center justify-center mr-3 group-hover:scale-110 transition-transform">
-                      {isLoading ? (
-                        <RefreshCw className="w-4 h-4 text-white animate-spin" />
-                      ) : (
-                        <Search className="w-4 h-4 text-white" />
-                      )}
+              <div className="flex flex-col lg:flex-row items-center gap-4">
+                {/* Leaving From */}
+                <div className="flex-1 min-w-0 group">
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
+                      <div className="w-3 h-3 bg-aerotrav-yellow rounded-full animate-pulse"></div>
                     </div>
-                    <span className="text-lg">{isLoading ? 'Searching...' : 'Search'}</span>
+                    <input
+                      type="text"
+                      placeholder="Leaving from (e.g., Kuala Lumpur (KUL))"
+                      value={searchParams.origin}
+                      onChange={(e) => setSearchParams(prev => ({ ...prev, origin: e.target.value }))}
+                      className="w-full pl-12 pr-4 py-5 bg-white/20 backdrop-blur-sm border-2 border-white/40 rounded-2xl text-white placeholder-white/60 focus:outline-none focus:ring-4 focus:ring-aerotrav-yellow/50 focus:border-aerotrav-yellow transition-all duration-300 hover:bg-white/30 focus:bg-white/30 text-lg"
+                    />
+                    <div className="absolute top-2 left-12 text-xs text-white/60 font-medium">Leaving from</div>
+                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                      <Edit className="h-4 w-4 text-white/50 group-hover:text-white transition-colors" />
+                    </div>
                   </div>
-                </Button>
-              </div>
-            </div>
-
-            {/* Enhanced Quick Actions */}
-            <div className="flex flex-col lg:flex-row items-center justify-between mt-6 pt-6 border-t border-white/20 gap-4">
-              <div className="flex items-center gap-6 text-sm text-white/90">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <span className="font-medium">Found {filteredAndSortedFlights.length} flights</span>
                 </div>
-                <span className="text-white/60">•</span>
-                <span className="font-medium">{searchParams.origin.split('(')[0].trim()} → {searchParams.destination.split('(')[0].trim()}</span>
-                <span className="text-white/60">•</span>
-                <span className="text-aerotrav-yellow font-medium">Best prices guaranteed</span>
+
+                {/* Enhanced Swap Button */}
+                <div className="flex-shrink-0">
+                  <button className="p-3 bg-aerotrav-yellow rounded-full hover:bg-aerotrav-yellow-500 transition-all duration-300 hover:scale-110 shadow-lg hover:shadow-xl">
+                    <ArrowUpDown className="h-5 w-5 text-aerotrav-blue" />
+                  </button>
+                </div>
+
+                {/* Going To */}
+                <div className="flex-1 min-w-0 group">
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
+                      <div className="w-3 h-3 bg-aerotrav-yellow rounded-full animate-pulse"></div>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Going to (e.g., Da Nang (DAD))"
+                      value={searchParams.destination}
+                      onChange={(e) => setSearchParams(prev => ({ ...prev, destination: e.target.value }))}
+                      className="w-full pl-12 pr-4 py-5 bg-white/20 backdrop-blur-sm border-2 border-white/40 rounded-2xl text-white placeholder-white/60 focus:outline-none focus:ring-4 focus:ring-aerotrav-yellow/50 focus:border-aerotrav-yellow transition-all duration-300 hover:bg-white/30 focus:bg-white/30 text-lg"
+                    />
+                    <div className="absolute top-2 left-12 text-xs text-white/60 font-medium">Going to</div>
+                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                      <Edit className="h-4 w-4 text-white/50 group-hover:text-white transition-colors" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Enhanced Departure Date */}
+                <div className="flex-1 min-w-0 group">
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
+                      <Calendar className="h-5 w-5 text-aerotrav-yellow" />
+                    </div>
+                    <input
+                      type="date"
+                      placeholder="Departure Date"
+                      value={searchParams.departDate}
+                      min={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => setSearchParams(prev => ({ ...prev, departDate: e.target.value }))}
+                      className="w-full pl-12 pr-4 py-5 bg-white/20 backdrop-blur-sm border-2 border-white/40 rounded-2xl text-white placeholder-white/60 focus:outline-none focus:ring-4 focus:ring-aerotrav-yellow/50 focus:border-aerotrav-yellow transition-all duration-300 hover:bg-white/30 focus:bg-white/30 text-lg [color-scheme:dark]"
+                    />
+                    <div className="absolute top-2 left-12 text-xs text-white/60 font-medium">Departure</div>
+                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                      <Edit className="h-4 w-4 text-white/50 group-hover:text-white transition-colors" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Return Date */}
+                <div className="flex-1 min-w-0 group">
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
+                      <Calendar className="h-5 w-5 text-aerotrav-yellow" />
+                    </div>
+                    <input
+                      type="date"
+                      placeholder="Return Date"
+                      value={searchParams.returnDate || ''}
+                      min={searchParams.departDate || new Date().toISOString().split('T')[0]}
+                      onChange={(e) => setSearchParams(prev => ({ ...prev, returnDate: e.target.value }))}
+                      className="w-full pl-12 pr-4 py-5 bg-white/20 backdrop-blur-sm border-2 border-white/40 rounded-2xl text-white placeholder-white/60 focus:outline-none focus:ring-4 focus:ring-aerotrav-yellow/50 focus:border-aerotrav-yellow transition-all duration-300 hover:bg-white/30 focus:bg-white/30 text-lg [color-scheme:dark]"
+                    />
+                    <div className="absolute top-2 left-12 text-xs text-white/60 font-medium">Return</div>
+                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                      <Edit className="h-4 w-4 text-white/50 group-hover:text-white transition-colors" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Enhanced Travellers */}
+                <div className="flex-1 min-w-0 group">
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
+                      <Users className="h-5 w-5 text-aerotrav-yellow" />
+                    </div>
+                    <select
+                      value={`${searchParams.passengers || 1}-${searchParams.class || 'Economy'}`}
+                      onChange={(e) => {
+                        const [passengers, travelClass] = e.target.value.split('-');
+                        setSearchParams(prev => ({ 
+                          ...prev, 
+                          passengers: parseInt(passengers),
+                          class: travelClass
+                        }));
+                      }}
+                      className="w-full pl-12 pr-4 py-5 bg-white/20 backdrop-blur-sm border-2 border-white/40 rounded-2xl text-white focus:outline-none focus:ring-4 focus:ring-aerotrav-yellow/50 focus:border-aerotrav-yellow transition-all duration-300 hover:bg-white/30 focus:bg-white/30 text-lg"
+                    >
+                      {[1,2,3,4,5,6,7,8].map(num => (
+                        <React.Fragment key={num}>
+                          <option value={`${num}-Economy`} className="bg-aerotrav-blue text-white">
+                            {num} Adult{num > 1 ? 's' : ''} - Economy
+                          </option>
+                          <option value={`${num}-Business`} className="bg-aerotrav-blue text-white">
+                            {num} Adult{num > 1 ? 's' : ''} - Business
+                          </option>
+                          <option value={`${num}-First`} className="bg-aerotrav-blue text-white">
+                            {num} Adult{num > 1 ? 's' : ''} - First Class
+                          </option>
+                        </React.Fragment>
+                      ))}
+                    </select>
+                    <div className="absolute top-2 left-12 text-xs text-white/60 font-medium">Travellers</div>
+                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                      <Edit className="h-4 w-4 text-white/50 group-hover:text-white transition-colors" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Enhanced Search Button */}
+                <div className="flex-shrink-0">
+                  <Button 
+                    onClick={handleRefreshSearch}
+                    disabled={isLoading}
+                    className="bg-gradient-to-r from-aerotrav-yellow to-yellow-400 hover:from-aerotrav-yellow-500 hover:to-yellow-500 text-aerotrav-blue font-bold px-10 py-5 rounded-2xl h-auto shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-aerotrav-blue rounded-full flex items-center justify-center mr-3 group-hover:scale-110 transition-transform">
+                        {isLoading ? (
+                          <RefreshCw className="w-4 h-4 text-white animate-spin" />
+                        ) : (
+                          <Search className="w-4 h-4 text-white" />
+                        )}
+                      </div>
+                      <span className="text-lg">{isLoading ? 'Searching...' : 'Search'}</span>
+                    </div>
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Button variant="ghost" onClick={handleRefreshSearch} size="sm" className="text-white hover:bg-white/10 border border-white/20 hover:border-white/40 transition-all duration-300">
-                  <RefreshCw className="h-4 w-4 mr-1" />
-                  Refresh
-                </Button>
+
+              {/* Enhanced Quick Actions */}
+              <div className="flex flex-col lg:flex-row items-center justify-between mt-6 pt-6 border-t border-white/20 gap-4">
+                <div className="flex items-center gap-6 text-sm text-white/90">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <span className="font-medium">Found {filteredAndSortedFlights.length} flights</span>
+                  </div>
+                  <span className="text-white/60">•</span>
+                  <span className="font-medium">{searchParams.origin.split('(')[0].trim()} → {searchParams.destination.split('(')[0].trim()}</span>
+                  <span className="text-white/60">•</span>
+                  <span className="text-aerotrav-yellow font-medium">Best prices guaranteed</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button variant="ghost" onClick={handleRefreshSearch} size="sm" className="text-white hover:bg-white/10 border border-white/20 hover:border-white/40 transition-all duration-300">
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    Refresh
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

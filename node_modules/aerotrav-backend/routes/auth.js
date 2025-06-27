@@ -7,7 +7,10 @@ import db from '../config/database.js';
 const router = express.Router();
 
 // User Registration (converted from signup_submit.php)
-router.post('/register', validateUserRegistration, asyncHandler(async (req, res) => {
+router.post('/register', (req, res, next) => {
+  console.log('🟢 /register got:', req.body);
+  next();
+}, validateUserRegistration, asyncHandler(async (req, res) => {
   const { name, email, password, phone } = req.body;
 
   // Check if user already exists
@@ -29,7 +32,7 @@ router.post('/register', validateUserRegistration, asyncHandler(async (req, res)
   // Create user
   const result = await db.query(
     `INSERT INTO users (name, email, password, phone, role, status, created_at) 
-     VALUES (?, ?, ?, ?, 'user', 'active', NOW())`,
+  VALUES (?, ?, ?, ?, 'user', 'active', NOW())`,
     [name, email, hashedPassword, phone || null]
   );
 
@@ -142,7 +145,7 @@ router.get('/profile', asyncHandler(async (req, res) => {
       `SELECT id, name, email, phone, role, status, profile_image, date_of_birth, 
               gender, nationality, passport_number, preferred_language, preferred_currency,
               created_at, updated_at 
-       FROM users WHERE id = ? AND status = "active"`,
+      FROM users WHERE id = ? AND status = "active"`,
       [decoded.id]
     );
 

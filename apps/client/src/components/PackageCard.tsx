@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useCart } from '@/contexts/CartContext';
+import { useCartContext } from '@/contexts/CartContext';
 import { useToast } from '@/hooks/use-toast';
 import { ShoppingCart, Eye, Check } from 'lucide-react';
 
@@ -40,7 +40,7 @@ const PackageCard: React.FC<PackageCardProps> = ({
   featured
 }) => {
   const navigate = useNavigate();
-  const { addItemWithCustomToast, items } = useCart();
+  const { addToCart, items } = useCartContext();
 
   const finalPrice = discount ? price - price * discount / 100 : price;
 
@@ -67,31 +67,12 @@ const PackageCard: React.FC<PackageCardProps> = ({
 
   const handleAddToCart = () => {
     if (!isInCart) {
-      addItemWithCustomToast(cartItem, navigate);
+      addToCart(cartItem, navigate);
     }
   };
 
   const handleViewDetails = () => {
-    navigate(`/package/${id}`, {
-      state: {
-        packageData: {
-          id,
-          title,
-          description,
-          price,
-          finalPrice,
-          duration,
-          destination,
-          imageUrl,
-          flightIncluded,
-          hotelIncluded,
-          carIncluded,
-          rating,
-          discount,
-          featured
-        }
-      }
-    });
+    navigate(`/package-details/${id}`);
   };
 
   return (

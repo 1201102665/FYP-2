@@ -15,6 +15,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Destination } from "@/services/destinationService";
 import destinationService from "@/services/destinationService";
 import { useToast } from "@/hooks/use-toast";
+import { flightService } from '@/services';
+import hotelService  from '@/services/hotelService';
+import packageService from '@/services/packageService';
+import { carService } from '@/services';
+import FlightCard from '@/components/FlightCard';
+import HotelCard from '@/components/HotelCard';
+import CarCard from '@/components/CarCard';
+import PackageCard from '@/components/PackageCard';
 
 import { 
   Search, 
@@ -23,7 +31,7 @@ import {
   Users, 
   Plane, 
   Hotel, 
-  Car, 
+  Car as CarIcon, 
   Package,
   Star,
   TrendingUp,
@@ -38,6 +46,38 @@ import {
 import TravelOptions from "@/components/TravelOptions";
 import CheckoutProgress from "@/components/CheckoutProgress";
 import { getDestinations } from "@/services/destinationService";
+import type { Car } from '@/services/carService';
+import type { PackageCardProps } from '@/components/PackageCard';
+
+// Define types for recommendations
+interface FlightRecommendation {
+  id: number;
+  airline: string;
+  logo?: string;
+  departureTime: string;
+  arrivalTime: string;
+  duration: string;
+  departureAirport: string;
+  arrivalAirport: string;
+  direct: boolean;
+  price: number;
+  currency: string;
+  travelClass?: string;
+}
+interface HotelRecommendation {
+  id: number;
+  name: string;
+  location: string;
+  stars: number;
+  rating: number;
+  reviewCount: number;
+  price: number;
+  images: string[];
+  perks: string[];
+  nights: number;
+  startDate: string;
+  endDate: string;
+}
 
 const HomePage = () => {
   const { trackView } = useUserActivityContext();
@@ -53,6 +93,10 @@ const HomePage = () => {
     checkOut: '',
     guests: '1 Guest'
   });
+  const [flightRecommendation, setFlightRecommendation] = useState<FlightRecommendation | null>(null);
+  const [hotelRecommendation, setHotelRecommendation] = useState<HotelRecommendation | null>(null);
+  const [carRecommendation, setCarRecommendation] = useState<Car | null>(null);
+  const [packageRecommendation, setPackageRecommendation] = useState<PackageCardProps | null>(null);
 
   // Fetch destinations from API
   useEffect(() => {
@@ -75,6 +119,76 @@ const HomePage = () => {
   useEffect(() => {
     trackView('homepage', 'destination');
   }, [trackView]);
+
+  useEffect(() => {
+    // Fetch flight recommendation
+    flightService.getAllFlights(1, 1).then(res => {
+      if (res.flights && res.flights.length > 0) {
+        const flight = res.flights[0];
+        setFlightRecommendation({
+          id: typeof flight.id === 'string' ? parseInt(flight.id, 10) : flight.id,
+          airline: flight.airline,
+          logo: flight.airline_logo,
+          departureTime: flight.departure_time,
+          arrivalTime: flight.arrival_time,
+          duration: flight.duration ? `${flight.duration} min` : '',
+          departureAirport: flight.origin_airport || flight.origin,
+          arrivalAirport: flight.destination_airport || flight.destination,
+          direct: true,
+          price: flight.price,
+          currency: 'RM',
+          travelClass: flight.class || 'Economy',
+        });
+      }
+    });
+    // Fetch hotel recommendation
+    hotelService.getAllHotels(1, 1).then(res => {
+      if (res.hotels && res.hotels.length > 0) {
+        const hotel = res.hotels[0];
+        setHotelRecommendation({
+          id: hotel.id,
+          name: hotel.name,
+          location: hotel.location || hotel.city || hotel.destination,
+          stars: hotel.star_rating || 4,
+          rating: hotel.rating || hotel.user_rating || 4.5,
+          price: hotel.price_per_night,
+          images: hotel.images || [],
+          perks: hotel.amenities ? hotel.amenities.slice(0, 3) : [],
+          nights: 1,
+          startDate: '',
+          endDate: '',
+          reviewCount: 20,
+        });
+      }
+    });
+    // Fetch car recommendation
+    carService.getCars(1, 1).then(res => {
+      if (res.success && res.data && res.data.cars && res.data.cars.length > 0) {
+        setCarRecommendation(res.data.cars[0]);
+      }
+    });
+    // Fetch package recommendation
+    packageService.getPackages().then(res => {
+      if (res && res.length > 0) {
+        const pkg = res[0];
+        setPackageRecommendation({
+          id: pkg.id.toString(),
+          title: pkg.name,
+          description: pkg.description,
+          price: typeof pkg.price === 'number' ? pkg.price : 0,
+          duration: pkg.duration,
+          destination: pkg.destinations && pkg.destinations.length > 0 ? pkg.destinations[0] : '',
+          imageUrl: pkg.image,
+          flightIncluded: pkg.included_services?.includes('flight'),
+          hotelIncluded: pkg.included_services?.includes('hotel'),
+          carIncluded: pkg.included_services?.includes('car'),
+          rating: pkg.rating || 4.5,
+          discount: undefined,
+          featured: false,
+        });
+      }
+    });
+  }, []);
 
   const handleTabClick = (tab: string) => {
     setSelectedTab(tab);
@@ -147,7 +261,7 @@ const HomePage = () => {
   const quickActions = [
     { name: "Flights", icon: Plane, path: "/flights", color: "bg-blue-500", count: "2.5M+ flights" },
     { name: "Hotels", icon: Hotel, path: "/hotels", color: "bg-green-500", count: "1.8M+ hotels" },
-    { name: "Cars", icon: Car, path: "/car-rentals", color: "bg-purple-500", count: "50K+ cars" },
+    { name: "Cars", icon: CarIcon, path: "/car-rentals", color: "bg-purple-500", count: "50K+ cars" },
     { name: "Packages", icon: Package, path: "/packages", color: "bg-orange-500", count: "15K+ packages" },
   ];
 
@@ -205,18 +319,11 @@ const HomePage = () => {
     }
   ];
 
-  const stats = [
-    { number: "2.5M+", label: "Happy Travelers" },
-    { number: "180+", label: "Countries" },
-    { number: "15K+", label: "Travel Packages" },
-    { number: "4.8★", label: "Average Rating" }
-  ];
-
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="page-layout bg-gray-50">
       <Header />
       
-      <main>
+      <main className="page-content">
         {/* Hero Section with Enhanced Search */}
         <section className="relative bg-gradient-to-br from-aerotrav-blue via-aerotrav-blue-700 to-aerotrav-blue-800 overflow-hidden">
           {/* Background Pattern */}
@@ -243,23 +350,6 @@ const HomePage = () => {
 
               {/* Enhanced Interactive Search Bar */}
               <div className="bg-white/95 backdrop-blur-lg rounded-3xl p-8 shadow-2xl max-w-6xl mx-auto border border-white/20">
-                {/* Search Tabs */}
-                <div className="flex flex-wrap justify-center gap-2 mb-6">
-                  {['All', 'Flights', 'Hotels', 'Cars', 'Packages'].map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => handleTabClick(tab)}
-                      className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                        tab === selectedTab 
-                          ? 'bg-aerotrav-blue text-white shadow-lg' 
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
-                      }`}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                   {/* Destination Field */}
                   <div className="relative group">
@@ -336,19 +426,6 @@ const HomePage = () => {
                   </div>
                 </div>
 
-                {/* Advanced Options Toggle */}
-                <div className="flex items-center justify-between mb-6">
-                  <button className="text-sm text-aerotrav-blue hover:text-aerotrav-blue-700 font-medium flex items-center transition-colors">
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                    </svg>
-                    Advanced Options
-                  </button>
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <span>💡 Pro tip: Book 2 months ahead for best deals</span>
-                  </div>
-                </div>
-
                 {/* Enhanced Search Button */}
                 <Button 
                   onClick={handleSearch}
@@ -364,20 +441,6 @@ const HomePage = () => {
                     </div>
                   </div>
                 </Button>
-
-                {/* Quick Suggestions */}
-                <div className="mt-6 flex flex-wrap justify-center gap-2">
-                  <span className="text-sm text-gray-500 mr-2">Popular:</span>
-                  {['Bali', 'Tokyo', 'Paris', 'New York', 'Dubai'].map((city) => (
-                    <button
-                      key={city}
-                      onClick={() => handleQuickDestination(city)}
-                      className="px-3 py-1 text-sm bg-gray-100 hover:bg-aerotrav-blue hover:text-white rounded-full transition-all duration-300 text-gray-600"
-                    >
-                      {city}
-                    </button>
-                  ))}
-                </div>
               </div>
             </div>
           </div>
@@ -410,49 +473,6 @@ const HomePage = () => {
           </div>
         </section>
 
-        {/* Trending Destinations */}
-        <section className="py-16 bg-gray-50">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Trending Destinations</h2>
-              <p className="text-gray-600 max-w-2xl mx-auto">Discover the hottest travel destinations loved by millions of travelers</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {trendingDestinations.map((destination, index) => (
-                <Card 
-                  key={index} 
-                  onClick={() => navigate('/packages', { state: { destination: destination.name } })}
-                  className="overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group"
-                >
-                  <div className="relative">
-                    <img 
-                      src={destination.image} 
-                      alt={destination.name}
-                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <Badge className="absolute top-3 left-3 bg-aerotrav-yellow text-black">
-                      {destination.badge}
-                    </Badge>
-                    <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center">
-                      <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                      <span className="text-sm font-medium">{destination.rating}</span>
-                    </div>
-                  </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold text-gray-900 mb-2">{destination.name}</h3>
-                    <p className="text-aerotrav-blue font-bold">{destination.price}</p>
-                    <div className="mt-2 flex items-center text-sm text-gray-500">
-                      <Package className="h-4 w-4 mr-1" />
-                      <span>View Packages</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* Features Section */}
         <section className="py-16 bg-white">
           <div className="container mx-auto px-4">
@@ -475,20 +495,6 @@ const HomePage = () => {
           </div>
         </section>
 
-        {/* Stats Section */}
-        <section className="py-16 bg-aerotrav-blue">
-          <div className="container mx-auto px-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-              {stats.map((stat, index) => (
-                <div key={index}>
-                  <div className="text-4xl font-bold text-white mb-2">{stat.number}</div>
-                  <div className="text-white/80">{stat.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* AI Recommendations */}
         {isAuthenticated && (
           <section className="py-16 bg-gray-50">
@@ -497,24 +503,6 @@ const HomePage = () => {
             </div>
           </section>
         )}
-
-        {/* CTA Section */}
-        <section className="py-16 bg-gradient-to-r from-aerotrav-blue to-aerotrav-blue-700">
-          <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl font-bold text-white mb-4">Ready to Start Your Journey?</h2>
-            <p className="text-white/90 text-lg mb-8 max-w-2xl mx-auto">
-              Join millions of travelers who trust AeroTrav for their perfect trips
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild className="bg-aerotrav-yellow hover:bg-aerotrav-yellow-500 text-black font-semibold px-8 py-3">
-                <Link to="/signup">Get Started Today</Link>
-              </Button>
-              <Button asChild variant="outline" className="border-white text-white hover:bg-white hover:text-aerotrav-blue px-8 py-3">
-                <Link to="/about">Learn More</Link>
-              </Button>
-            </div>
-          </div>
-        </section>
       </main>
 
       <Footer />

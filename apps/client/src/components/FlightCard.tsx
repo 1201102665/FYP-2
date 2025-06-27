@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useCart } from '@/contexts/CartContext';
+import { useCartContext } from '@/contexts/CartContext';
 import { useToast } from '@/hooks/use-toast';
 import { ShoppingCart, Eye, Check } from 'lucide-react';
 
@@ -35,7 +35,7 @@ const FlightCard: React.FC<FlightCardProps> = ({
   travelClass = 'Economy'
 }) => {
   const navigate = useNavigate();
-  const { addItemWithCustomToast, items } = useCart();
+  const { addToCart, items } = useCartContext();
 
   const handleSelect = () => {
     navigate('/flight-booking', {
@@ -100,7 +100,7 @@ const FlightCard: React.FC<FlightCardProps> = ({
 
   const handleAddToCart = () => {
     if (!isInCart) {
-      addItemWithCustomToast(cartItem, navigate);
+      addToCart(cartItem, navigate);
     }
   };
 

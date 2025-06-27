@@ -1,136 +1,83 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 
+// Load environment variables
 dotenv.config();
 
-// Database connection configuration
-const dbConfig = {
+// Database configuration
+const config = {
   host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT) || 3306,
-  user: process.env.DB_USERNAME || 'root',
+  user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'aerotrav',
-  charset: 'utf8mb4',
-  timezone: '+00:00',
-  connectionLimit: 100,
+  port: process.env.DB_PORT || '3306',
+  waitForConnections: true,
+  connectionLimit: 10,
   queueLimit: 0,
-  dateStrings: true
+  multipleStatements: true,
+  dateStrings: true,
+  charset: 'utf8mb4'
 };
 
-// Create connection pool
-const pool = mysql.createPool(dbConfig);
+console.log('📊 Database config:', {
+  host: config.host,
+  user: config.user,
+  database: config.database,
+  port: config.port
+});
 
-// Database connection class
-class Database {
-  constructor() {
-    this.pool = pool;
-  }
+// Create the connection pool
+const pool = mysql.createPool(config);
 
-  // Get a connection from the pool
-  async getConnection() {
-    try {
-      return await this.pool.getConnection();
-    } catch (error) {
-      console.error('Error getting database connection:', error);
-      throw error;
-    }
-  }
+// Test the connection
+pool.getConnection()
+  .then(connection => {
+    console.log('✅ Database connected successfully');
+    // Test JSON functionality
+    return connection.query('SELECT JSON_CONTAINS(\'["a", "b"]\', \'"a"\') as test')
+      .then(([results]) => {
+        console.log('✅ JSON functions working:', results[0].test === 1);
+        connection.release();
+      });
+  })
+  .catch(err => {
+    console.error('❌ Error connecting to database:', err.message);
+  });
 
+// Helper functions for database operations
+const db = {
   // Execute a query
-  async query(sql, params = []) {
+  query: async (sql, values) => {
     try {
-      const [rows, fields] = await this.pool.execute(sql, params);
-      return rows;
+      const [results] = await pool.execute(sql, values);
+      return results;
     } catch (error) {
-      console.error('Database query error:', error);
-      console.error('SQL:', sql);
-      console.error('Params:', params);
+      console.error('❌ Database query error:', {
+        sql,
+        values,
+        error: error.message
+      });
       throw error;
     }
-  }
+  },
 
-  // Execute a query and return the first row
-  async queryOne(sql, params = []) {
+  // Execute a query and return a single row
+  queryOne: async (sql, values) => {
     try {
-      const rows = await this.query(sql, params);
-      return rows.length > 0 ? rows[0] : null;
+      const [results] = await pool.execute(sql, values);
+      return results[0];
     } catch (error) {
+      console.error('❌ Database queryOne error:', {
+        sql,
+        values,
+        error: error.message
+      });
       throw error;
     }
-  }
+  },
 
-  // Begin transaction
-  async beginTransaction() {
-    const connection = await this.getConnection();
-    await connection.beginTransaction();
-    return connection;
-  }
-
-  // Commit transaction
-  async commit(connection) {
-    await connection.commit();
-    connection.release();
-  }
-
-  // Rollback transaction
-  async rollback(connection) {
-    await connection.rollback();
-    connection.release();
-  }
-
-  // Test database connection
-  async testConnection() {
-    try {
-      const result = await this.query('SELECT 1 as test_connection');
-      return result[0].test_connection === 1;
-    } catch (error) {
-      console.error('Database connection test failed:', error);
-      return false;
-    }
-  }
-
-  // Get database statistics
-  async getConnectionStats() {
-    try {
-      const stats = {
-        total_connections: this.pool.config.connectionLimit,
-        active_connections: this.pool._allConnections.length,
-        idle_connections: this.pool._freeConnections.length,
-        queued_requests: this.pool._connectionQueue.length
-      };
-      return stats;
-    } catch (error) {
-      console.error('Error getting connection stats:', error);
-      return null;
-    }
-  }
-
-  // Close all connections
-  async closeAllConnections() {
-    try {
-      await this.pool.end();
-      console.log('All database connections closed');
-    } catch (error) {
-      console.error('Error closing database connections:', error);
-    }
-  }
-}
-
-// Create and export database instance
-const db = new Database();
-
-// Test connection on startup
-(async () => {
-  try {
-    const isConnected = await db.testConnection();
-    if (isConnected) {
-      console.log('✅ Database connection established successfully');
-    } else {
-      console.error('❌ Database connection test failed');
-    }
-  } catch (error) {
-    console.error('❌ Database connection error:', error.message);
-  }
-})();
+  // Get the connection pool
+  getPool: () => pool
+};
 
 export default db; 

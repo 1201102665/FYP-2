@@ -163,6 +163,19 @@
     transform: translateY(-4px);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   }
+
+  /* Sticky Footer Layout */
+  .page-layout {
+    min-height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .page-content {
+    flex: 1 !important;
+    display: flex;
+    flex-direction: column;
+  }
 }
 
 @keyframes float {

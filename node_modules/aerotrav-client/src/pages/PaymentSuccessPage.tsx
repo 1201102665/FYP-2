@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ReviewForm from '@/components/ReviewForm';
 import { 
   CheckCircle, 
   Download, 
@@ -18,12 +19,16 @@ import {
   Car,
   Package,
   Home,
-  FileText
+  FileText,
+  Star
 } from 'lucide-react';
 
 const PaymentSuccessPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [reviewedItems, setReviewedItems] = useState<Set<string>>(new Set());
   
   const bookingData = location.state;
   
@@ -76,6 +81,30 @@ const PaymentSuccessPage: React.FC = () => {
   const sendConfirmationEmail = () => {
     // In a real application, this would send a confirmation email
     alert('Confirmation email sent to ' + checkoutData.contactInfo.email);
+  };
+
+  const handleReviewItem = (item: any) => {
+    setSelectedItem(item);
+    setShowReviewForm(true);
+  };
+
+  const handleReviewSuccess = () => {
+    if (selectedItem) {
+      const itemKey = `${selectedItem.type}-${selectedItem.id}`;
+      setReviewedItems(prev => new Set([...prev, itemKey]));
+    }
+    setShowReviewForm(false);
+    setSelectedItem(null);
+  };
+
+  const handleReviewCancel = () => {
+    setShowReviewForm(false);
+    setSelectedItem(null);
+  };
+
+  const isItemReviewed = (item: any) => {
+    const itemKey = `${item.type}-${item.id}`;
+    return reviewedItems.has(itemKey);
   };
 
   return (
@@ -163,11 +192,61 @@ const PaymentSuccessPage: React.FC = () => {
                       <div className="text-right">
                         <p className="font-medium">${item.price * item.quantity}</p>
                         <p className="text-sm text-green-600">✓ Confirmed</p>
+                        {isItemReviewed(item) ? (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                            <span className="text-sm text-gray-600">Reviewed</span>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleReviewItem(item)}
+                            className="mt-2"
+                          >
+                            <Star className="h-4 w-4 mr-1" />
+                            Rate & Review
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
                 </CardContent>
               </Card>
+
+              {/* Review Prompt */}
+              {cartItems.length > 0 && (
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-blue-800">
+                      <Star className="h-5 w-5" />
+                      Share Your Experience
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-blue-700 mb-4">
+                      Help other travelers by sharing your experience with the services you just booked. 
+                      Your reviews help us improve and assist future travelers in making informed decisions.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {cartItems.map((item: any) => (
+                        !isItemReviewed(item) && (
+                          <Button
+                            key={item.id}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleReviewItem(item)}
+                            className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                          >
+                            <Star className="h-4 w-4 mr-1" />
+                            Review {item.name}
+                          </Button>
+                        )
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Traveler Information */}
               <Card>
@@ -342,6 +421,21 @@ const PaymentSuccessPage: React.FC = () => {
           </div>
         </div>
       </main>
+      
+      {/* Review Form Modal */}
+      {selectedItem && (
+        <ReviewForm
+          itemId={selectedItem.id}
+          itemType={selectedItem.type}
+          itemName={selectedItem.name}
+          itemImage={selectedItem.image}
+          bookingId={parseInt(bookingReference.replace('AT', ''))}
+          onSuccess={handleReviewSuccess}
+          onCancel={handleReviewCancel}
+          isOpen={showReviewForm}
+        />
+      )}
+      
       <Footer />
     </div>
   );

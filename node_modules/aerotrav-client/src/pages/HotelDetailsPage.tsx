@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import AddToCartButton from "@/components/AddToCartButton";
-import { useCart } from "@/contexts/CartContext";
+import { useCartContext } from "@/contexts/CartContext";
 
 const HotelDetailsPage = () => {
   const { id } = useParams();
@@ -12,6 +12,7 @@ const HotelDetailsPage = () => {
   const [selectedDate, setSelectedDate] = React.useState<string>("May 15, 2024");
   const [guests, setGuests] = React.useState<number>(2);
   const [nights, setNights] = React.useState<number>(3);
+  const { addToCart } = useCartContext();
 
   // Mock hotel data (in a real app, this would be fetched based on the id)
   const hotel = {

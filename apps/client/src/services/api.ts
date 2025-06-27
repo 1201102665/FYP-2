@@ -2,15 +2,24 @@
  * Base API service for making HTTP requests to the backend
  */
 
-// API base URL - configured to work with Vite proxy
-const API_BASE_URL = '/api';
+// API base URL - use relative path in development to leverage Vite proxy
+const API_BASE_URL = import.meta.env.DEV 
+  ? '/api' // Use Vite proxy in development
+  : import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+console.log('🔧 API Configuration:', {
+  isDev: import.meta.env.DEV,
+  baseURL: API_BASE_URL,
+  viteApiUrl: import.meta.env.VITE_API_URL
+});
 
 // Common request options for fetch
 const defaultOptions: RequestInit = {
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
-  }
+  },
+  credentials: 'include' // Important for CORS with credentials
 };
 
 /**
@@ -34,7 +43,9 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
   // Parse JSON response
   try {
-    return await response.json();
+    const data = await response.json();
+    console.log('📋 API response:', data);
+    return data;
   } catch (error) {
     console.error('Failed to parse JSON response:', error);
     throw new Error('Invalid JSON response from server');
@@ -80,8 +91,9 @@ export async function get<T>(endpoint: string, queryParams?: Record<string, stri
 /**
  * Generic POST request
  */
-export async function post<T>(endpoint: string, data: any): Promise<T> {
+export async function post<T, D = unknown>(endpoint: string, data: D): Promise<T> {
   try {
+    console.log('🔍 POST request:', endpoint, data);
     const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
       ...defaultOptions,
       method: 'POST',
@@ -98,7 +110,7 @@ export async function post<T>(endpoint: string, data: any): Promise<T> {
 /**
  * Generic PUT request
  */
-export async function put<T>(endpoint: string, data: any): Promise<T> {
+export async function put<T, D = unknown>(endpoint: string, data: D): Promise<T> {
   try {
     const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
       ...defaultOptions,

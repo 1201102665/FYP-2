@@ -5,13 +5,19 @@ import { ValidationError } from '../middleware/errorHandler.js';
 export const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    const errorMessages = errors.array().map(error => ({
-      field: error.path,
-      message: error.msg,
-      value: error.value
-    }));
-    
-    throw new ValidationError('Validation failed', errorMessages);
+    return res.status(400).json({
+      success: false,
+      message: 'Validation Error',
+      error: {
+        type: 'ValidationError',
+        code: null,
+        details: errors.array().map(error => ({
+          field: error.param,
+          message: error.msg,
+          value: error.value
+        }))
+      }
+    });
   }
   next();
 };
@@ -27,9 +33,7 @@ export const commonValidations = {
   // Password validation
   password: body('password')
     .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+    .withMessage('Password must be at least 8 characters long'),
 
   // Name validation
   name: body('name')
@@ -120,52 +124,163 @@ export const validateFlightSearch = [
 // Hotel search validation
 export const validateHotelSearch = [
   body('destination')
-    .notEmpty()
-    .trim()
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Destination is required and must be between 2 and 100 characters'),
+    .optional()
+    .trim(),
   body('check_in')
-    .notEmpty()
-    .isISO8601()
-    .withMessage('Check-in date is required and must be in YYYY-MM-DD format'),
+    .optional()
+    .custom((value) => {
+      if (!value || value === '') return true;
+      if (!value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        throw new Error('Check-in date must be in YYYY-MM-DD format');
+      }
+      return true;
+    }),
   body('check_out')
-    .notEmpty()
-    .isISO8601()
-    .withMessage('Check-out date is required and must be in YYYY-MM-DD format'),
+    .optional()
+    .custom((value) => {
+      if (!value || value === '') return true;
+      if (!value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        throw new Error('Check-out date must be in YYYY-MM-DD format');
+      }
+      return true;
+    }),
   body('rooms')
     .optional()
     .isInt({ min: 1, max: 10 })
-    .withMessage('Rooms must be between 1 and 10'),
+    .withMessage('Rooms must be between 1 and 10')
+    .default(1),
   body('adults')
     .optional()
     .isInt({ min: 1, max: 20 })
-    .withMessage('Adults must be between 1 and 20'),
+    .withMessage('Adults must be between 1 and 20')
+    .default(2),
   body('children')
     .optional()
     .isInt({ min: 0, max: 10 })
-    .withMessage('Children must be between 0 and 10'),
+    .withMessage('Children must be between 0 and 10')
+    .default(0),
+  body('hotel_type')
+    .optional()
+    .isIn(['luxury', 'business', 'resort', 'boutique', 'budget', 'all'])
+    .withMessage('Invalid hotel type')
+    .default('all'),
+  body('min_rating')
+    .optional()
+    .isFloat({ min: 0, max: 5 })
+    .withMessage('Minimum rating must be between 0 and 5'),
+  body('max_price')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Maximum price must be a positive number'),
+  body('min_price')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Minimum price must be a positive number'),
+  body('amenities')
+    .optional()
+    .isArray()
+    .withMessage('Amenities must be an array')
+    .default([]),
+  body('sort_by')
+    .optional()
+    .isIn(['price_low', 'price_high', 'rating', 'distance', 'recommended'])
+    .withMessage('Invalid sort option')
+    .default('recommended'),
+  body('page')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Page must be a positive integer')
+    .default(1),
+  body('per_page')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('Per page must be between 1 and 100')
+    .default(20),
   handleValidationErrors
 ];
 
 // Car search validation
 export const validateCarSearch = [
   body('pickup_location')
-    .notEmpty()
-    .trim()
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Pickup location is required and must be between 2 and 100 characters'),
-  body('pickup_date')
-    .notEmpty()
-    .isISO8601()
-    .withMessage('Pickup date is required and must be in YYYY-MM-DD HH:MM format'),
-  body('return_date')
-    .notEmpty()  
-    .isISO8601()
-    .withMessage('Return date is required and must be in YYYY-MM-DD HH:MM format'),
-  body('driver_age')
     .optional()
-    .isInt({ min: 18, max: 100 })
-    .withMessage('Driver age must be between 18 and 100'),
+    .trim()
+    .isLength({ min: 0, max: 100 })
+    .withMessage('Pickup location must not exceed 100 characters'),
+  body('pickup_date')
+    .optional()
+    .custom((value) => {
+      if (value && value !== '') {
+        return /^\d{4}-\d{2}-\d{2}$/.test(value);
+      }
+      return true;
+    })
+    .withMessage('Pickup date must be in YYYY-MM-DD format'),
+  body('return_date')
+    .optional()
+    .custom((value) => {
+      if (value && value !== '') {
+        return /^\d{4}-\d{2}-\d{2}$/.test(value);
+      }
+      return true;
+    })
+    .withMessage('Return date must be in YYYY-MM-DD format'),
+  body('category')
+    .optional()
+    .custom((value) => {
+      if (!value || value === 'all') return true;
+      return ['economy', 'compact', 'midsize', 'full-size', 'luxury', 'suv', 'van', 'minivan'].includes(value);
+    })
+    .withMessage('Invalid car category'),
+  body('transmission')
+    .optional()
+    .custom((value) => {
+      if (!value || value === 'all') return true;
+      return ['automatic', 'manual'].includes(value);
+    })
+    .withMessage('Invalid transmission type'),
+  body('min_price')
+    .optional()
+    .custom((value) => {
+      if (value === undefined || value === null || value === '') return true;
+      return !isNaN(parseFloat(value)) && parseFloat(value) >= 0;
+    })
+    .withMessage('Minimum price must be a positive number'),
+  body('max_price')
+    .optional()
+    .custom((value) => {
+      if (value === undefined || value === null || value === '') return true;
+      return !isNaN(parseFloat(value)) && parseFloat(value) >= 0;
+    })
+    .withMessage('Maximum price must be a positive number'),
+  body('features')
+    .optional()
+    .custom((value) => {
+      if (!value) return true;
+      return Array.isArray(value);
+    })
+    .withMessage('Features must be an array'),
+  body('sort_by')
+    .optional()
+    .custom((value) => {
+      if (!value) return true;
+      return ['recommended', 'price_low', 'price_high', 'rating'].includes(value);
+    })
+    .withMessage('Invalid sort option'),
+  body('page')
+    .optional()
+    .custom((value) => {
+      if (value === undefined || value === null || value === '') return true;
+      return Number.isInteger(Number(value)) && Number(value) >= 1;
+    })
+    .withMessage('Page must be a positive integer'),
+  body('per_page')
+    .optional()
+    .custom((value) => {
+      if (value === undefined || value === null || value === '') return true;
+      const num = Number(value);
+      return Number.isInteger(num) && num >= 1 && num <= 50;
+    })
+    .withMessage('Per page must be between 1 and 50'),
   handleValidationErrors
 ];
 

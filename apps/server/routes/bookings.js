@@ -5,6 +5,149 @@ import db from '../config/database.js';
 
 const router = express.Router();
 
+// Create car booking with driver details
+router.post('/car-booking', asyncHandler(async (req, res) => {
+  // Check if user is logged in
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Please log in to complete booking'
+    });
+  }
+
+  const userId = req.user.id;
+  const { 
+    carId,
+    driverDetails,
+    paymentDetails,
+    pickupDate,
+    dropoffDate,
+    pickupLocation,
+    totalAmount,
+    bookingDetails
+  } = req.body;
+
+  // Validate required fields
+  if (!carId || !driverDetails || !paymentDetails || !totalAmount) {
+    return res.status(400).json({
+      success: false,
+      message: 'Missing required booking information'
+    });
+  }
+
+  try {
+    // Start transaction
+    await db.query('START TRANSACTION');
+
+    // Get car details
+    const car = await db.queryOne('SELECT * FROM cars WHERE id = ? AND status = "available"', [carId]);
+    
+    if (!car) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        message: 'Car not found or unavailable'
+      });
+    }
+
+    // Generate unique booking reference
+    let bookingReference = 'CAR' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + 
+                          String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
+
+    // Ensure booking reference is unique
+    const existingBooking = await db.queryOne(
+      'SELECT id FROM bookings WHERE booking_reference = ?',
+      [bookingReference]
+    );
+
+    if (existingBooking) {
+      bookingReference = 'CAR' + Date.now() + String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+    }
+
+    // Prepare booking details
+    const carBookingDetails = {
+      car: {
+        id: car.id,
+        make: car.make,
+        model: car.model,
+        category: car.category,
+        daily_rate: car.daily_rate
+      },
+      driver: driverDetails,
+      pickup: {
+        date: pickupDate,
+        location: pickupLocation
+      },
+      dropoff: {
+        date: dropoffDate,
+        location: pickupLocation
+      },
+      pricing: bookingDetails,
+      payment_method: 'credit_card'
+    };
+
+    // Insert booking
+    const bookingResult = await db.query(`
+      INSERT INTO bookings 
+      (user_id, booking_reference, service_type, details, total_amount, 
+       payment_status, booking_status, booking_date, return_date, special_requests) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      userId,
+      bookingReference,
+      'car',
+      JSON.stringify(carBookingDetails),
+      totalAmount,
+      'completed', // Assume payment is processed
+      'confirmed',
+      pickupDate,
+      dropoffDate,
+      `Driver: ${driverDetails.name}, Phone: ${driverDetails.countryCode}${driverDetails.phoneNumber}`
+    ]);
+
+    const bookingId = bookingResult.insertId;
+
+    // Update car availability (optional - depending on your business logic)
+    // await db.query('UPDATE cars SET available_cars = available_cars - 1 WHERE id = ?', [carId]);
+
+    // Commit transaction
+    await db.query('COMMIT');
+
+    // Log user activity
+    await logUserActivity(userId, req.ip, 'car_booking_created', {
+      booking_id: bookingId,
+      booking_reference: bookingReference,
+      car_id: carId,
+      total_amount: totalAmount,
+      user_agent: req.get('User-Agent')
+    });
+
+    // Return success response
+    res.json({
+      success: true,
+      message: 'Car booking created successfully',
+      data: {
+        booking_id: parseInt(bookingId),
+        booking_reference: bookingReference,
+        total_amount: totalAmount,
+        car_details: car,
+        driver_details: driverDetails,
+        booking_status: 'confirmed',
+        payment_status: 'completed'
+      }
+    });
+
+  } catch (error) {
+    // Rollback transaction
+    await db.query('ROLLBACK');
+    console.error('Car booking error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Car booking failed. Please try again.'
+    });
+  }
+}));
+
 // Create booking from cart - migrated from checkout_submit.php
 router.post('/checkout', asyncHandler(async (req, res) => {
   // Check if user is logged in

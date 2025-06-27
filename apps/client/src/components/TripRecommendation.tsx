@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { useCart } from '@/contexts/CartContext';
+import { useCartContext } from '@/contexts/CartContext';
 import { useToast } from '@/hooks/use-toast';
 
 interface TripDay {
@@ -37,11 +37,11 @@ interface TripRecommendationProps {
 
 const TripRecommendation: React.FC<TripRecommendationProps> = ({ trip, onNewTrip }) => {
   const navigate = useNavigate();
-  const { addItem } = useCart();
+  const { addToCart } = useCartContext();
   const { toast } = useToast();
 
   const handleAddToCart = () => {
-    addItem({
+    addToCart({
       id: Date.now().toString(),
       name: `${trip.destination} Trip Package`,
       image: `https://source.unsplash.com/featured/?${trip.destination}`,

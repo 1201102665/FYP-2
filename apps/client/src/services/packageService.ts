@@ -31,14 +31,17 @@ export const getPackages = async (): Promise<Package[]> => {
 /**
  * Get a specific package by ID
  */
-export const getPackageById = async (id: number): Promise<Package | null> => {
-  try {
-    const response = await api.get<Package>(`/packages/${id}`);
-    return response || null;
-  } catch (error) {
-    console.error(`❌ Error fetching package ID ${id}:`, error);
-    throw error;
+export const getPackageById = async (id: string | number): Promise<any> => {
+  console.log('🔍 Frontend: Getting package by ID:', id);
+  const response = await api.get(`packages/${id}`);
+  console.log('📦 Frontend: API response:', response);
+  
+  if (response) {
+    console.log('✅ Frontend: Package found:', response);
+    return response;
   }
+  console.log('❌ Frontend: Package not found');
+  throw new Error('Package not found');
 };
 
 /**

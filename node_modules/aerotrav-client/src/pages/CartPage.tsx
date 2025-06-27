@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCart } from '@/contexts/CartContext';
+import { useCartContext } from '@/contexts/CartContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -26,15 +26,14 @@ import {
 
 const CartPage: React.FC = () => {
   const navigate = useNavigate();
-  const { 
-    items, 
-    removeItem, 
-    updateQuantity, 
-    updateSpecialRequests, 
-    updateAddOns, 
-    getTotalPrice, 
-    clearCart 
-  } = useCart();
+  const {
+    items,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    total,
+    itemCount
+  } = useCartContext();
 
   const [specialRequests, setSpecialRequests] = useState<{[key: string]: string}>({});
   const [selectedAddOns, setSelectedAddOns] = useState<{[key: string]: string[]}>({});
@@ -86,7 +85,6 @@ const CartPage: React.FC = () => {
 
   const handleSpecialRequestChange = (itemId: string, request: string) => {
     setSpecialRequests(prev => ({ ...prev, [itemId]: request }));
-    updateSpecialRequests(itemId, request);
   };
 
   const handleAddOnToggle = (itemId: string, addOnId: string, addOnName: string) => {
@@ -101,7 +99,6 @@ const CartPage: React.FC = () => {
         newAddOns = [...currentAddOns, addOnId];
       }
       
-      updateAddOns(itemId, newAddOns);
       return { ...prev, [itemId]: newAddOns };
     });
   };
@@ -117,7 +114,7 @@ const CartPage: React.FC = () => {
   };
 
   const getTotalPriceWithAddOns = () => {
-    const baseTotal = getTotalPrice();
+    const baseTotal = total;
     const addOnsTotal = items.reduce((total, item) => {
       return total + calculateAddOnPrice(item.id, item.type) * item.quantity;
     }, 0);
@@ -200,7 +197,7 @@ const CartPage: React.FC = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => removeItem(item.id)}
+                            onClick={() => removeFromCart(item.id)}
                             className="text-red-600 hover:text-red-800"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -328,12 +325,12 @@ const CartPage: React.FC = () => {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span>Subtotal ({items.reduce((sum, item) => sum + item.quantity, 0)} items)</span>
-                      <span>${getTotalPrice()}</span>
+                      <span>Subtotal ({itemCount} items)</span>
+                      <span>${total}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Add-ons</span>
-                      <span>${getTotalPriceWithAddOns() - getTotalPrice()}</span>
+                      <span>${getTotalPriceWithAddOns() - total}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Service Fee</span>

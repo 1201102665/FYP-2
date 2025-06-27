@@ -7,126 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PackageDetails from '@/components/PackageDetails';
-import PackageBookingForm from '@/components/PackageBookingForm';
 import AddToCartButton from '@/components/AddToCartButton';
 import { useToast } from '@/hooks/use-toast';
-
-// Mock data for demonstration
-const MOCK_PACKAGES = {
-  '1': {
-    id: '1',
-    title: 'Bali Paradise Escape',
-    description: 'Immerse yourself in the beauty of Bali with this all-inclusive package featuring luxury accommodations, cultural experiences, and breathtaking beaches. Discover the island\'s rich culture, visit ancient temples, relax on pristine beaches, and indulge in delicious Balinese cuisine.',
-    price: 1299,
-    duration: '7 nights',
-    destination: 'Bali, Indonesia',
-    startDate: '2023-06-15',
-    endDate: '2023-06-22',
-    imageUrls: [
-    'https://images.unsplash.com/photo-1537996194471-e657df975ab4',
-    'https://images.unsplash.com/photo-1552733407-5d5c46c3bb3b',
-    'https://images.unsplash.com/photo-1539367628448-4bc5c9d171c8'],
-
-    flightIncluded: true,
-    hotelIncluded: true,
-    carIncluded: true,
-    rating: 4.8,
-    discount: 15,
-    featured: true,
-    flightDetails: {
-      departure: 'New York (JFK)',
-      arrival: 'Denpasar (DPS)',
-      airline: 'Singapore Airlines',
-      flightNumber: 'SQ23',
-      departureTime: '10:30 PM',
-      arrivalTime: '9:15 AM (+2)',
-      class: 'Economy'
-    },
-    hotelDetails: {
-      name: 'Ubud Paradise Resort & Spa',
-      rating: 5,
-      location: 'Ubud, Bali',
-      roomType: 'Deluxe Villa with Pool',
-      boardType: 'All-inclusive',
-      amenities: [
-      'Private Pool', 'Free Wi-Fi', 'Spa Access', 'Daily Breakfast',
-      'Airport Transfer', 'Beach Access', 'Room Service', 'Fitness Center']
-
-    },
-    carDetails: {
-      type: 'SUV',
-      brand: 'Toyota',
-      model: 'RAV4',
-      pickupLocation: 'Denpasar Airport',
-      dropoffLocation: 'Denpasar Airport'
-    },
-    itinerary: [
-    {
-      day: 1,
-      title: 'Arrival in Bali',
-      description: 'Arrive at Denpasar International Airport and transfer to your luxury resort in Ubud.',
-      activities: ['Airport pickup', 'Resort check-in', 'Welcome dinner']
-    },
-    {
-      day: 2,
-      title: 'Ubud Cultural Tour',
-      description: 'Explore the cultural heart of Bali with visits to ancient temples and artisan workshops.',
-      activities: ['Ubud Palace', 'Sacred Monkey Forest', 'Lunch at local restaurant', 'Art galleries tour']
-    },
-    {
-      day: 3,
-      title: 'Mount Batur Sunrise Trek',
-      description: 'Early morning trek up Mount Batur to witness a spectacular sunrise over the island.',
-      activities: ['Pre-dawn pickup', 'Guided trek', 'Breakfast at summit', 'Hot springs visit']
-    },
-    {
-      day: 4,
-      title: 'Beach Day at Nusa Dua',
-      description: 'Relax at one of Bali\'s most beautiful beaches with optional water activities.',
-      activities: ['Beach transfer', 'Snorkeling', 'Beachside lunch', 'Sunset cocktails']
-    },
-    {
-      day: 5,
-      title: 'Temples and Rice Terraces',
-      description: 'Visit Bali\'s most iconic temples and the stunning Tegallalang Rice Terraces.',
-      activities: ['Tanah Lot Temple', 'Tegallalang Rice Terraces', 'Traditional dance performance']
-    },
-    {
-      day: 6,
-      title: 'Spa Day and Shopping',
-      description: 'Indulge in a traditional Balinese spa treatment and browse local markets.',
-      activities: ['Full body massage', 'Flower bath', 'Ubud Market shopping', 'Farewell dinner']
-    },
-    {
-      day: 7,
-      title: 'Departure Day',
-      description: 'Final day to enjoy resort amenities before departure.',
-      activities: ['Late checkout', 'Airport transfer']
-    }],
-
-    includedServices: [
-    'Round-trip international flights',
-    'Luxury villa accommodation',
-    'All-inclusive meal plan',
-    'Private car rental',
-    'Airport transfers',
-    'Daily guided activities',
-    'All entrance fees to attractions',
-    'Welcome and farewell dinners',
-    '24/7 customer support',
-    'Travel insurance'],
-
-    excludedServices: [
-    'Personal expenses',
-    'Additional activities not in itinerary',
-    'Alcoholic beverages outside of included meals',
-    'Spa treatments (except included session)',
-    'Gratuities for guides and drivers',
-    'Visa fees (if applicable)']
-
-  }
-  // More packages would be defined here in a real app
-};
+import { getPackageById } from '@/services/packageService';
+import ReviewsSection from '@/components/ReviewsSection';
 
 const PackageDetailsPage: React.FC = () => {
   const { id } = useParams<{id: string;}>();
@@ -135,100 +19,30 @@ const PackageDetailsPage: React.FC = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [packageData, setPackageData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Get package data from location state or fallback to mock data
-  const locationPackageData = location.state?.packageData;
-  let packageData = null;
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    setError(null);
+    getPackageById(id)
+      .then(data => {
+        setPackageData(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Package not found');
+        setLoading(false);
+      });
+  }, [id]);
 
-  if (locationPackageData) {
-    // Use data passed from PackageCard
-    packageData = {
-      ...locationPackageData,
-      imageUrls: [locationPackageData.imageUrl], // Convert single image to array
-      flightDetails: {
-        departure: 'Kuala Lumpur (KUL)',
-        arrival: locationPackageData.destination,
-        airline: 'Malaysia Airlines',
-        flightNumber: 'MH123',
-        departureTime: '09:00 AM',
-        arrivalTime: '12:30 PM',
-        class: 'Economy'
-      },
-      hotelDetails: {
-        name: `Premium Hotel in ${locationPackageData.destination.split(',')[0]}`,
-        rating: locationPackageData.rating || 4.5,
-        location: locationPackageData.destination,
-        roomType: 'Deluxe Room with City View',
-        boardType: 'Breakfast Included',
-        amenities: [
-          'Free Wi-Fi', 'Air Conditioning', 'Room Service', 'Daily Housekeeping',
-          'Concierge Service', 'Fitness Center', 'Swimming Pool', 'Restaurant'
-        ]
-      },
-      carDetails: {
-        type: 'Sedan',
-        brand: 'Toyota',
-        model: 'Camry',
-        pickupLocation: 'Airport',
-        dropoffLocation: 'Hotel'
-      },
-      itinerary: [
-        {
-          day: 1,
-          title: 'Arrival Day',
-          description: `Arrive at ${locationPackageData.destination} and check into your hotel.`,
-          activities: ['Airport pickup', 'Hotel check-in', 'Welcome orientation']
-        },
-        {
-          day: 2,
-          title: 'City Exploration',
-          description: 'Explore the main attractions and cultural sites.',
-          activities: ['Guided city tour', 'Local restaurant lunch', 'Cultural sites visit']
-        },
-        {
-          day: 3,
-          title: 'Adventure Day',
-          description: 'Enjoy outdoor activities and local experiences.',
-          activities: ['Adventure activities', 'Local market visit', 'Traditional dinner']
-        }
-      ],
-      includedServices: [
-        locationPackageData.flightIncluded ? 'Round-trip flights' : null,
-        locationPackageData.hotelIncluded ? 'Hotel accommodation' : null,
-        locationPackageData.carIncluded ? 'Car rental' : null,
-        'Airport transfers',
-        'Daily breakfast',
-        'Guided tours',
-        'Travel insurance'
-      ].filter(Boolean),
-      excludedServices: [
-        'Personal expenses',
-        'Additional meals not mentioned',
-        'Optional activities',
-        'Gratuities',
-        'Visa fees (if applicable)'
-      ]
-    };
-  } else if (id && MOCK_PACKAGES[id]) {
-    // Fallback to mock data
-    packageData = MOCK_PACKAGES[id];
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center"><span>Loading...</span></div>;
   }
-
-  // If no package data found, show error state
-  if (!packageData) {
-    return (
-      <div className="flex flex-col min-h-screen">
-        <Header />
-        <main className="flex-grow container mx-auto py-12 px-4">
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-bold mb-4">Package Not Found</h2>
-            <p className="mb-6">The package you're looking for doesn't exist or has been removed.</p>
-            <Button onClick={() => navigate('/packages')}>Browse All Packages</Button>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
+  if (error || !packageData) {
+    return <div className="min-h-screen flex items-center justify-center text-red-600">{error || 'Package not found'}</div>;
   }
 
   const handleNextImage = () => {
@@ -243,6 +57,100 @@ const PackageDetailsPage: React.FC = () => {
     );
   };
 
+  // Map backend fields to component expectations with fallbacks
+  const displayData = {
+    title: packageData.name || 'Package Name',
+    description: packageData.description || 'No description available',
+    destination: packageData.destination || 'Unknown destination',
+    duration: `${packageData.duration_days || 0} days`,
+    price: packageData.base_price || packageData.price || 0,
+    rating: 4.5 + Math.random() * 0.5, // Generate random rating for now
+    discount: packageData.featured ? 15 : 0, // Add discount for featured packages
+    imageUrls: packageData.images && packageData.images.length > 0 
+      ? packageData.images 
+      : ['https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=600'],
+    flightIncluded: packageData.includes ? packageData.includes.some(item => item.toLowerCase().includes('flight')) : true,
+    hotelIncluded: packageData.includes ? packageData.includes.some(item => item.toLowerCase().includes('accommodation') || item.toLowerCase().includes('hotel')) : true,
+    carIncluded: packageData.includes ? packageData.includes.some(item => item.toLowerCase().includes('car') || item.toLowerCase().includes('transfer')) : false,
+    // Ensure itinerary is in the correct format
+    itinerary: packageData.itinerary && Array.isArray(packageData.itinerary) && packageData.itinerary.length > 0
+      ? packageData.itinerary.map((day, index) => ({
+          day: day.day || index + 1,
+          title: day.title || `Day ${index + 1}`,
+          description: day.description || 'Explore and enjoy the destination',
+          activities: Array.isArray(day.activities) ? day.activities : ['Sightseeing', 'Local experiences']
+        }))
+      : [
+          {
+            day: 1,
+            title: 'Arrival Day',
+            description: 'Arrive at your destination and settle in',
+            activities: ['Airport pickup', 'Hotel check-in', 'Welcome orientation']
+          },
+          {
+            day: 2,
+            title: 'Exploration Day',
+            description: 'Discover the highlights of your destination',
+            activities: ['City tour', 'Local attractions', 'Cultural experiences']
+          }
+        ],
+    highlights: packageData.highlights || [],
+    includes: packageData.includes && Array.isArray(packageData.includes) 
+      ? packageData.includes 
+      : ['Accommodation', 'Airport transfers', 'Tour guide'],
+    excludes: packageData.excludes && Array.isArray(packageData.excludes) 
+      ? packageData.excludes 
+      : ['International flights', 'Travel insurance', 'Personal expenses'],
+    // Mock data for components that expect specific structures
+    flightDetails: {
+      airline: 'Premium Airlines',
+      departure: 'Your City',
+      arrival: packageData.destination_city || 'Destination'
+    },
+    hotelDetails: {
+      name: 'Premium Hotel',
+      roomType: 'Deluxe Room',
+      location: packageData.destination || 'Prime Location',
+      boardType: 'Half Board',
+      amenities: ['WiFi', 'Pool', 'Spa', 'Restaurant', 'Gym', 'Room Service']
+    },
+    carDetails: {
+      brand: 'Premium',
+      model: 'Sedan',
+      type: 'Economy'
+    },
+    // Add dates for booking form
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(Date.now() + (packageData.duration_days || 7) * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  };
+
+  // Map backend fields to PackageDetails props
+  const mappedPackageDetails = {
+    title: displayData.title,
+    description: displayData.description,
+    destination: displayData.destination,
+    duration: displayData.duration,
+    itinerary: displayData.itinerary,
+    flightDetails: {
+      ...displayData.flightDetails,
+      flightNumber: 'PR001',
+      departureTime: '08:00',
+      arrivalTime: '12:00',
+      class: 'Economy'
+    },
+    hotelDetails: {
+      ...displayData.hotelDetails,
+      rating: 5
+    },
+    carDetails: {
+      ...displayData.carDetails,
+      pickupLocation: 'Airport',
+      dropoffLocation: 'Hotel'
+    },
+    includedServices: displayData.includes,
+    excludedServices: displayData.excludes
+  };
+
   return (
     <div className="flex flex-col min-h-screen" data-id="xmq7kalu4" data-path="src/pages/PackageDetailsPage.tsx">
       <Header data-id="65zy7awzz" data-path="src/pages/PackageDetailsPage.tsx" />
@@ -252,8 +160,8 @@ const PackageDetailsPage: React.FC = () => {
         <section className="relative" data-id="v05r1jsl3" data-path="src/pages/PackageDetailsPage.tsx">
           <div className="h-[300px] md:h-[500px] overflow-hidden" data-id="734m8bnps" data-path="src/pages/PackageDetailsPage.tsx">
             <img
-              src={packageData.imageUrls[currentImageIndex]}
-              alt={packageData.title}
+              src={displayData.imageUrls[currentImageIndex]}
+              alt={displayData.title}
               className="w-full h-full object-cover" data-id="eqntl6uqb" data-path="src/pages/PackageDetailsPage.tsx" />
 
             
@@ -280,7 +188,7 @@ const PackageDetailsPage: React.FC = () => {
             </div>
             
             <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-2" data-id="fxli1gm0v" data-path="src/pages/PackageDetailsPage.tsx">
-              {packageData.imageUrls.map((_, index) =>
+              {displayData.imageUrls.map((_, index) =>
               <button
                 key={index}
                 className={`h-2 w-2 rounded-full ${
@@ -299,56 +207,54 @@ const PackageDetailsPage: React.FC = () => {
             <div className="lg:col-span-2 space-y-8" data-id="ek4bhxbfp" data-path="src/pages/PackageDetailsPage.tsx">
               <div className="flex flex-col md:flex-row md:items-center justify-between" data-id="n0a0bpw2u" data-path="src/pages/PackageDetailsPage.tsx">
                 <div data-id="xxab8aup6" data-path="src/pages/PackageDetailsPage.tsx">
-                  <h1 className="text-3xl font-bold mb-2" data-id="rpec1knq5" data-path="src/pages/PackageDetailsPage.tsx">{packageData.title}</h1>
+                  <h1 className="text-3xl font-bold mb-2" data-id="rpec1knq5" data-path="src/pages/PackageDetailsPage.tsx">{displayData.title}</h1>
                   <div className="flex items-center space-x-2 mb-2" data-id="2io4kbw60" data-path="src/pages/PackageDetailsPage.tsx">
                     <div className="flex" data-id="9fpl0a3hu" data-path="src/pages/PackageDetailsPage.tsx">
                       {Array.from({ length: 5 }).map((_, i) =>
-                      <span key={i} className={i < Math.floor(packageData.rating) ? "text-yellow-500" : "text-gray-300"} data-id="cxqumri24" data-path="src/pages/PackageDetailsPage.tsx">
+                      <span key={i} className={i < Math.floor(displayData.rating) ? "text-yellow-500" : "text-gray-300"} data-id="cxqumri24" data-path="src/pages/PackageDetailsPage.tsx">
                           ★
                         </span>
                       )}
                     </div>
-                    <span className="text-sm text-muted-foreground" data-id="gdgnbh4zb" data-path="src/pages/PackageDetailsPage.tsx">{packageData.rating} out of 5</span>
+                    <span className="text-sm text-muted-foreground" data-id="gdgnbh4zb" data-path="src/pages/PackageDetailsPage.tsx">{displayData.rating.toFixed(1)} out of 5</span>
                   </div>
                 </div>
                 
                 <div className="flex flex-col items-end mt-4 md:mt-0" data-id="2bl287dtp" data-path="src/pages/PackageDetailsPage.tsx">
                   <div className="mb-2" data-id="xgogtkqqx" data-path="src/pages/PackageDetailsPage.tsx">
-                    {packageData.discount ?
+                    {displayData.discount ?
                     <div className="space-y-1" data-id="6ye4kcc66" data-path="src/pages/PackageDetailsPage.tsx">
                         <div className="flex items-baseline space-x-2" data-id="j7wc16pk8" data-path="src/pages/PackageDetailsPage.tsx">
                           <span className="text-2xl font-bold text-primary" data-id="jfsy5wphk" data-path="src/pages/PackageDetailsPage.tsx">
-                            ${(packageData.price - packageData.price * packageData.discount / 100).toFixed(2)}
+                            ${(displayData.price - displayData.price * displayData.discount / 100).toFixed(2)}
                           </span>
                           <span className="text-lg line-through text-muted-foreground" data-id="j9ndu3uxg" data-path="src/pages/PackageDetailsPage.tsx">
-                            ${packageData.price.toFixed(2)}
+                            ${displayData.price.toFixed(2)}
                           </span>
                         </div>
-                        <Badge className="bg-red-500 text-white" data-id="5pfrq8hak" data-path="src/pages/PackageDetailsPage.tsx">{packageData.discount}% OFF</Badge>
+                        <Badge className="bg-red-500 text-white" data-id="5pfrq8hak" data-path="src/pages/PackageDetailsPage.tsx">{displayData.discount}% OFF</Badge>
                       </div> :
 
-                    <span className="text-2xl font-bold text-primary" data-id="2cvrm378h" data-path="src/pages/PackageDetailsPage.tsx">${packageData.price.toFixed(2)}</span>
+                    <span className="text-2xl font-bold text-primary" data-id="2cvrm378h" data-path="src/pages/PackageDetailsPage.tsx">${displayData.price.toFixed(2)}</span>
                     }
-                    <span className="text-sm text-muted-foreground" data-id="jobnptvzx" data-path="src/pages/PackageDetailsPage.tsx">per person</span>
+                    <span className="text-sm text-muted-foreground" data-path="src/pages/PackageDetailsPage.tsx">per person</span>
                   </div>
                   <AddToCartButton
                     item={{
                       id: id,
                       type: 'package',
-                      name: packageData.title,
-                      price: packageData.discount ?
-                      parseFloat((packageData.price - packageData.price * packageData.discount / 100).toFixed(2)) :
-                      packageData.price,
+                      name: displayData.title,
+                      price: displayData.discount ?
+                      parseFloat((displayData.price - displayData.price * displayData.discount / 100).toFixed(2)) :
+                      displayData.price,
                       details: {
-                        destination: packageData.destination,
-                        duration: packageData.duration,
-                        startDate: packageData.startDate,
-                        endDate: packageData.endDate,
-                        flightIncluded: packageData.flightIncluded,
-                        hotelIncluded: packageData.hotelIncluded,
-                        carIncluded: packageData.carIncluded
+                        destination: displayData.destination,
+                        duration: displayData.duration,
+                        flightIncluded: displayData.flightIncluded,
+                        hotelIncluded: displayData.hotelIncluded,
+                        carIncluded: displayData.carIncluded
                       },
-                      image: packageData.imageUrls[0]
+                      image: displayData.imageUrls[0]
                     }} data-id="7xtjbi2z3" data-path="src/pages/PackageDetailsPage.tsx" />
 
                 </div>
@@ -364,7 +270,7 @@ const PackageDetailsPage: React.FC = () => {
                 
                 <TabsContent value="overview" className="space-y-4 pt-4" data-id="e2scv1x7z" data-path="src/pages/PackageDetailsPage.tsx">
                   <h2 className="text-xl font-bold" data-id="i4vz1t1c3" data-path="src/pages/PackageDetailsPage.tsx">Package Overview</h2>
-                  <p className="text-muted-foreground" data-id="pgnx6ffaj" data-path="src/pages/PackageDetailsPage.tsx">{packageData.description}</p>
+                  <p className="text-muted-foreground" data-id="pgnx6ffaj" data-path="src/pages/PackageDetailsPage.tsx">{displayData.description}</p>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6" data-id="hoe1op77o" data-path="src/pages/PackageDetailsPage.tsx">
                     <div className="bg-blue-50 p-4 rounded-lg" data-id="vwbdyjue4" data-path="src/pages/PackageDetailsPage.tsx">
@@ -374,8 +280,8 @@ const PackageDetailsPage: React.FC = () => {
                         </svg>
                         <h3 className="font-bold" data-id="epy6hbzcv" data-path="src/pages/PackageDetailsPage.tsx">Flight</h3>
                       </div>
-                      <p className="text-sm" data-id="noltoxvut" data-path="src/pages/PackageDetailsPage.tsx">{packageData.flightDetails.airline}</p>
-                      <p className="text-sm" data-id="mvkkiivml" data-path="src/pages/PackageDetailsPage.tsx">{packageData.flightDetails.departure} to {packageData.flightDetails.arrival}</p>
+                      <p className="text-sm" data-id="noltoxvut" data-path="src/pages/PackageDetailsPage.tsx">{displayData.flightDetails.airline}</p>
+                      <p className="text-sm" data-id="mvkkiivml" data-path="src/pages/PackageDetailsPage.tsx">{displayData.flightDetails.departure} to {displayData.flightDetails.arrival}</p>
                     </div>
                     
                     <div className="bg-green-50 p-4 rounded-lg" data-id="ewx5wpkio" data-path="src/pages/PackageDetailsPage.tsx">
@@ -386,8 +292,8 @@ const PackageDetailsPage: React.FC = () => {
                         </svg>
                         <h3 className="font-bold" data-id="v9rzt891h" data-path="src/pages/PackageDetailsPage.tsx">Hotel</h3>
                       </div>
-                      <p className="text-sm" data-id="69n5zu9ng" data-path="src/pages/PackageDetailsPage.tsx">{packageData.hotelDetails.name}</p>
-                      <p className="text-sm" data-id="zt1x97b5h" data-path="src/pages/PackageDetailsPage.tsx">{packageData.hotelDetails.roomType}</p>
+                      <p className="text-sm" data-id="69n5zu9ng" data-path="src/pages/PackageDetailsPage.tsx">{displayData.hotelDetails.name}</p>
+                      <p className="text-sm" data-id="zt1x97b5h" data-path="src/pages/PackageDetailsPage.tsx">{displayData.hotelDetails.roomType}</p>
                     </div>
                     
                     <div className="bg-amber-50 p-4 rounded-lg" data-id="c7p4mfa44" data-path="src/pages/PackageDetailsPage.tsx">
@@ -400,31 +306,21 @@ const PackageDetailsPage: React.FC = () => {
                         </svg>
                         <h3 className="font-bold" data-id="5vcnghx3t" data-path="src/pages/PackageDetailsPage.tsx">Car Rental</h3>
                       </div>
-                      <p className="text-sm" data-id="n8l14hs5l" data-path="src/pages/PackageDetailsPage.tsx">{packageData.carDetails.brand} {packageData.carDetails.model}</p>
-                      <p className="text-sm" data-id="sh064t6eb" data-path="src/pages/PackageDetailsPage.tsx">{packageData.carDetails.type}</p>
+                      <p className="text-sm" data-id="n8l14hs5l" data-path="src/pages/PackageDetailsPage.tsx">{displayData.carDetails.brand} {displayData.carDetails.model}</p>
+                      <p className="text-sm" data-id="sh064t6eb" data-path="src/pages/PackageDetailsPage.tsx">{displayData.carDetails.type}</p>
                     </div>
                   </div>
                   
-                  <PackageDetails
-                    title={packageData.title}
-                    description={packageData.description}
-                    destination={packageData.destination}
-                    duration={packageData.duration}
-                    itinerary={packageData.itinerary}
-                    flightDetails={packageData.flightDetails}
-                    hotelDetails={packageData.hotelDetails}
-                    carDetails={packageData.carDetails}
-                    includedServices={packageData.includedServices}
-                    excludedServices={packageData.excludedServices} data-id="b1sv3rdr2" data-path="src/pages/PackageDetailsPage.tsx" />
+                  <PackageDetails {...mappedPackageDetails} />
 
                 </TabsContent>
                 
                 <TabsContent value="itinerary" className="space-y-4 pt-4" data-id="xlb15rwvg" data-path="src/pages/PackageDetailsPage.tsx">
                   <h2 className="text-xl font-bold" data-id="iygwey5j1" data-path="src/pages/PackageDetailsPage.tsx">Your Journey</h2>
-                  <p className="text-muted-foreground mb-6" data-id="916ay5x1n" data-path="src/pages/PackageDetailsPage.tsx">Day-by-day breakdown of your {packageData.duration} in {packageData.destination}.</p>
+                  <p className="text-muted-foreground mb-6" data-id="916ay5x1n" data-path="src/pages/PackageDetailsPage.tsx">Day-by-day breakdown of your {displayData.duration} in {displayData.destination}.</p>
                   
                   <div className="space-y-6" data-id="90gw6vzi4" data-path="src/pages/PackageDetailsPage.tsx">
-                    {packageData.itinerary.map((day) =>
+                    {displayData.itinerary.map((day) =>
                     <div key={day.day} className="border-l-4 border-primary pl-4 pb-6 relative" data-id="6qxpy0guq" data-path="src/pages/PackageDetailsPage.tsx">
                         <div className="absolute -left-3 top-0 bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center" data-id="rlvyj0fin" data-path="src/pages/PackageDetailsPage.tsx">
                           {day.day}
@@ -450,29 +346,29 @@ const PackageDetailsPage: React.FC = () => {
                     <div className="aspect-w-16 aspect-h-9 h-64" data-id="ihlls4dj1" data-path="src/pages/PackageDetailsPage.tsx">
                       <img
                         src="https://images.unsplash.com/photo-1582719471384-894fbb16e074"
-                        alt={packageData.hotelDetails.name}
+                        alt={displayData.hotelDetails.name}
                         className="w-full h-full object-cover" data-id="7kbbuuvyv" data-path="src/pages/PackageDetailsPage.tsx" />
 
                     </div>
                     
                     <div className="p-6" data-id="298hh3c7e" data-path="src/pages/PackageDetailsPage.tsx">
                       <div className="flex justify-between items-start mb-3" data-id="7gfyejt5u" data-path="src/pages/PackageDetailsPage.tsx">
-                        <h3 className="text-xl font-bold" data-id="gvwuh4blv" data-path="src/pages/PackageDetailsPage.tsx">{packageData.hotelDetails.name}</h3>
+                        <h3 className="text-xl font-bold" data-id="gvwuh4blv" data-path="src/pages/PackageDetailsPage.tsx">{displayData.hotelDetails.name}</h3>
                         <div className="flex text-yellow-500" data-id="2qtfpv6zv" data-path="src/pages/PackageDetailsPage.tsx">
-                          {Array.from({ length: packageData.hotelDetails.rating }).map((_, i) =>
+                          {Array.from({ length: 5 }).map((_, i) =>
                           <span key={i} data-id="2nrd2iwmd" data-path="src/pages/PackageDetailsPage.tsx">★</span>
                           )}
                         </div>
                       </div>
                       
-                      <p className="text-muted-foreground mb-4" data-id="207wdkn96" data-path="src/pages/PackageDetailsPage.tsx">{packageData.hotelDetails.location}</p>
+                      <p className="text-muted-foreground mb-4" data-id="207wdkn96" data-path="src/pages/PackageDetailsPage.tsx">{displayData.hotelDetails.location}</p>
                       
                       <h4 className="font-medium mb-2" data-id="2sjlkwmcc" data-path="src/pages/PackageDetailsPage.tsx">Room Information</h4>
-                      <p className="mb-4" data-id="18hn1rh1f" data-path="src/pages/PackageDetailsPage.tsx">{packageData.hotelDetails.roomType} - {packageData.hotelDetails.boardType}</p>
+                      <p className="mb-4" data-id="18hn1rh1f" data-path="src/pages/PackageDetailsPage.tsx">{displayData.hotelDetails.roomType} - {displayData.hotelDetails.boardType}</p>
                       
                       <h4 className="font-medium mb-2" data-id="75tip1gwc" data-path="src/pages/PackageDetailsPage.tsx">Amenities</h4>
                       <div className="grid grid-cols-2 gap-2 mb-4" data-id="cxtweb7dj" data-path="src/pages/PackageDetailsPage.tsx">
-                        {packageData.hotelDetails.amenities.map((amenity, index) =>
+                        {displayData.hotelDetails.amenities.map((amenity, index) =>
                         <div key={index} className="flex items-center" data-id="41d76bzc2" data-path="src/pages/PackageDetailsPage.tsx">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" data-id="uv5abecfy" data-path="src/pages/PackageDetailsPage.tsx">
                               <polyline points="20 6 9 17 4 12" data-id="5ycy4d4ll" data-path="src/pages/PackageDetailsPage.tsx"></polyline>
@@ -486,87 +382,15 @@ const PackageDetailsPage: React.FC = () => {
                 </TabsContent>
                 
                 <TabsContent value="reviews" className="space-y-4 pt-4" data-id="j0ecu65j8" data-path="src/pages/PackageDetailsPage.tsx">
-                  <h2 className="text-xl font-bold" data-id="1r6sz32ul" data-path="src/pages/PackageDetailsPage.tsx">Customer Reviews</h2>
-                  <div className="bg-gray-50 p-6 rounded-lg" data-id="yucn7upv6" data-path="src/pages/PackageDetailsPage.tsx">
-                    <div className="flex items-center justify-between mb-4" data-id="bsl6rj1a9" data-path="src/pages/PackageDetailsPage.tsx">
-                      <div data-id="4dquxexft" data-path="src/pages/PackageDetailsPage.tsx">
-                        <h3 className="text-2xl font-bold" data-id="c01scxmky" data-path="src/pages/PackageDetailsPage.tsx">{packageData.rating}</h3>
-                        <div className="flex" data-id="c6aui03b6" data-path="src/pages/PackageDetailsPage.tsx">
-                          {Array.from({ length: 5 }).map((_, i) =>
-                          <span key={i} className={i < Math.floor(packageData.rating) ? "text-yellow-500" : "text-gray-300"} data-id="w5ivytsux" data-path="src/pages/PackageDetailsPage.tsx">
-                              ★
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground" data-id="79booq7j7" data-path="src/pages/PackageDetailsPage.tsx">Based on 24 reviews</p>
-                      </div>
-                      <Button data-id="4mgjb8c1p" data-path="src/pages/PackageDetailsPage.tsx">Write a Review</Button>
-                    </div>
-                    
-                    <div className="space-y-4" data-id="kvaratb7u" data-path="src/pages/PackageDetailsPage.tsx">
-                      {/* Mock reviews - in a real app these would come from the backend */}
-                      <div className="bg-white p-4 rounded-lg" data-id="stsjnyjs0" data-path="src/pages/PackageDetailsPage.tsx">
-                        <div className="flex justify-between mb-2" data-id="klpyjwapv" data-path="src/pages/PackageDetailsPage.tsx">
-                          <div className="flex items-center" data-id="vza37fyhm" data-path="src/pages/PackageDetailsPage.tsx">
-                            <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold mr-3" data-id="odxua5npo" data-path="src/pages/PackageDetailsPage.tsx">JD</div>
-                            <div data-id="iv4b8tl05" data-path="src/pages/PackageDetailsPage.tsx">
-                              <h4 className="font-medium" data-id="fiw4swybr" data-path="src/pages/PackageDetailsPage.tsx">John Doe</h4>
-                              <div className="flex text-yellow-500 text-sm" data-id="pawors56q" data-path="src/pages/PackageDetailsPage.tsx">★★★★★</div>
-                            </div>
-                          </div>
-                          <span className="text-sm text-muted-foreground" data-id="35ykxrqmx" data-path="src/pages/PackageDetailsPage.tsx">2 weeks ago</span>
-                        </div>
-                        <p data-id="njxwv1vb0" data-path="src/pages/PackageDetailsPage.tsx">Absolutely incredible experience! The resort was luxurious, and every detail of the trip was perfectly planned. Our guide was knowledgeable and friendly. Would highly recommend!</p>
-                      </div>
-                      
-                      <div className="bg-white p-4 rounded-lg" data-id="mitflxbdg" data-path="src/pages/PackageDetailsPage.tsx">
-                        <div className="flex justify-between mb-2" data-id="mkdi02vop" data-path="src/pages/PackageDetailsPage.tsx">
-                          <div className="flex items-center" data-id="avk00ageu" data-path="src/pages/PackageDetailsPage.tsx">
-                            <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold mr-3" data-id="eeoih9f22" data-path="src/pages/PackageDetailsPage.tsx">AS</div>
-                            <div data-id="6lna6gqbe" data-path="src/pages/PackageDetailsPage.tsx">
-                              <h4 className="font-medium" data-id="jq6y9h2sr" data-path="src/pages/PackageDetailsPage.tsx">Amanda Smith</h4>
-                              <div className="flex text-yellow-500 text-sm" data-id="l5m241f50" data-path="src/pages/PackageDetailsPage.tsx">★★★★<span className="text-gray-300" data-id="zf9l2hw0t" data-path="src/pages/PackageDetailsPage.tsx">★</span></div>
-                            </div>
-                          </div>
-                          <span className="text-sm text-muted-foreground" data-id="f0kmz68mc" data-path="src/pages/PackageDetailsPage.tsx">1 month ago</span>
-                        </div>
-                        <p data-id="e4xxizvbc" data-path="src/pages/PackageDetailsPage.tsx">Great package overall! The accommodations were excellent and the activities well-planned. Only giving 4 stars because some of the transfers were delayed, but the company was responsive in helping us resolve issues.</p>
-                      </div>
-                      
-                      <div className="bg-white p-4 rounded-lg" data-id="i5li3dfpp" data-path="src/pages/PackageDetailsPage.tsx">
-                        <div className="flex justify-between mb-2" data-id="fak0gxrum" data-path="src/pages/PackageDetailsPage.tsx">
-                          <div className="flex items-center" data-id="y7r1b4vhh" data-path="src/pages/PackageDetailsPage.tsx">
-                            <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold mr-3" data-id="jn7orpush" data-path="src/pages/PackageDetailsPage.tsx">RM</div>
-                            <div data-id="icqhm14kf" data-path="src/pages/PackageDetailsPage.tsx">
-                              <h4 className="font-medium" data-id="n531h8q14" data-path="src/pages/PackageDetailsPage.tsx">Robert Miller</h4>
-                              <div className="flex text-yellow-500 text-sm" data-id="2maqa1yni" data-path="src/pages/PackageDetailsPage.tsx">★★★★★</div>
-                            </div>
-                          </div>
-                          <span className="text-sm text-muted-foreground" data-id="6cdeqmrvj" data-path="src/pages/PackageDetailsPage.tsx">2 months ago</span>
-                        </div>
-                        <p data-id="cobtb26ef" data-path="src/pages/PackageDetailsPage.tsx">My wife and I had the time of our lives! The sunrise trek was magical, and we loved every minute of our stay. Worth every penny - we'll definitely book with this company again!</p>
-                      </div>
-                    </div>
-                  </div>
+                  <ReviewsSection
+                    itemType="package"
+                    itemId={displayData.id}
+                    itemName={displayData.name}
+                    itemImage={displayData.image}
+                    showReviewButton={true}
+                  />
                 </TabsContent>
               </Tabs>
-            </div>
-            
-            {/* Booking Form */}
-            <div className="lg:col-span-1" data-id="k3b19tpbj" data-path="src/pages/PackageDetailsPage.tsx">
-              <div className="sticky top-24" data-id="og53f7ix8" data-path="src/pages/PackageDetailsPage.tsx">
-                <PackageBookingForm
-                  packageId={id}
-                  packageName={packageData.title}
-                  basePrice={packageData.discount ?
-                  packageData.price - packageData.price * packageData.discount / 100 :
-                  packageData.price
-                  }
-                  destination={packageData.destination}
-                  startDate={packageData.startDate}
-                  endDate={packageData.endDate} data-id="09s0iq8y3" data-path="src/pages/PackageDetailsPage.tsx" />
-
-              </div>
             </div>
           </div>
         </section>
