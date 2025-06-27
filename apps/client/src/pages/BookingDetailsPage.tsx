@@ -88,7 +88,7 @@ const BookingDetailsPage: React.FC = () => {
         <Header data-id="vx6vb8oj4" data-path="src/pages/BookingDetailsPage.tsx" />
         <main className="flex-grow container mx-auto px-4 py-8" data-id="okwlxka7i" data-path="src/pages/BookingDetailsPage.tsx">
           <div className="mb-6" data-id="9fdxpbhtw" data-path="src/pages/BookingDetailsPage.tsx">
-            <ServiceNavigation data-id="rr9vwe66f" data-path="src/pages/BookingDetailsPage.tsx" />
+            {/* <ServiceNavigation data-id="rr9vwe66f" data-path="src/pages/BookingDetailsPage.tsx" /> */}
           </div>
           <div className="flex items-center justify-center h-64" data-id="8k6vu5jib" data-path="src/pages/BookingDetailsPage.tsx">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-aerotrav-blue" data-id="gybhf66b1" data-path="src/pages/BookingDetailsPage.tsx"></div>
@@ -105,7 +105,7 @@ const BookingDetailsPage: React.FC = () => {
         <Header data-id="7w2vvrmsq" data-path="src/pages/BookingDetailsPage.tsx" />
         <main className="flex-grow container mx-auto px-4 py-8" data-id="1d9h1r1rw" data-path="src/pages/BookingDetailsPage.tsx">
           <div className="mb-6" data-id="9q8812pch" data-path="src/pages/BookingDetailsPage.tsx">
-            <ServiceNavigation data-id="fj6mswdqz" data-path="src/pages/BookingDetailsPage.tsx" />
+            {/* <ServiceNavigation data-id="fj6mswdqz" data-path="src/pages/BookingDetailsPage.tsx" /> */}
           </div>
           <Card data-id="s5xra1ima" data-path="src/pages/BookingDetailsPage.tsx">
             <CardContent className="py-12 text-center" data-id="36r7vopr5" data-path="src/pages/BookingDetailsPage.tsx">
@@ -128,7 +128,7 @@ const BookingDetailsPage: React.FC = () => {
 
       <main className="flex-grow container mx-auto px-4 py-8" data-id="589eywzqh" data-path="src/pages/BookingDetailsPage.tsx">
         <div className="mb-6" data-id="jlp3273q5" data-path="src/pages/BookingDetailsPage.tsx">
-          <ServiceNavigation data-id="x9rzw6n94" data-path="src/pages/BookingDetailsPage.tsx" />
+          {/* <ServiceNavigation data-id="x9rzw6n94" data-path="src/pages/BookingDetailsPage.tsx" /> */}
         </div>
 
         <div className="flex justify-between items-center mb-6" data-id="3lj6u9tg7" data-path="src/pages/BookingDetailsPage.tsx">

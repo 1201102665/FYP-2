@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { getCarById, Car } from "@/services/carService";
+import { createBooking } from "@/services/bookingService";
 import { useToast } from "@/hooks/use-toast";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
 const CarPaymentPage = () => {
   const { id } = useParams<{ id: string; }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [cardNumber, setCardNumber] = useState("");
   const [expirationDate, setExpirationDate] = useState("");
@@ -18,6 +20,43 @@ const CarPaymentPage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [car, setCar] = useState<Car | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Get data from navigation state
+  const { car: carFromState, driverDetails, totalAmount } = location.state || {};
+
+  // Helper functions for input formatting
+  const formatCardNumber = (value: string) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    const matches = v.match(/\d{4,16}/g);
+    const match = matches && matches[0] || '';
+    const parts = [];
+    for (let i = 0, len = match.length; i < len; i += 4) {
+      parts.push(match.substring(i, i + 4));
+    }
+    if (parts.length) {
+      return parts.join(' ');
+    } else {
+      return v;
+    }
+  };
+
+  const formatExpirationDate = (value: string) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    if (v.length >= 2) {
+      return v.substring(0, 2) + '/' + v.substring(2, 4);
+    }
+    return v;
+  };
+
+  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatCardNumber(e.target.value);
+    setCardNumber(formatted);
+  };
+
+  const handleExpirationDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatExpirationDate(e.target.value);
+    setExpirationDate(formatted);
+  };
 
   useEffect(() => {
     const fetchCarDetails = async () => {
@@ -31,19 +70,35 @@ const CarPaymentPage = () => {
         return;
       }
 
+      // Check if we have the required booking data
+      if (!carFromState && !driverDetails) {
+        toast({
+          title: "Error",
+          description: "Please complete the booking form first",
+          variant: "destructive",
+        });
+        navigate(`/car-booking/${id}`);
+        return;
+      }
+
       try {
         setLoading(true);
-        const carData = await getCarById(parseInt(id));
-        if (!carData) {
-          toast({
-            title: "Error",
-            description: "Car not found",
-            variant: "destructive",
-          });
-          navigate("/car-rentals");
-          return;
+        // Use car from state if available, otherwise fetch from API
+        if (carFromState) {
+          setCar(carFromState);
+        } else {
+          const carData = await getCarById(parseInt(id));
+          if (!carData) {
+            toast({
+              title: "Error",
+              description: "Car not found",
+              variant: "destructive",
+            });
+            navigate("/car-rentals");
+            return;
+          }
+          setCar(carData);
         }
-        setCar(carData);
       } catch (error) {
         console.error("Error fetching car details:", error);
         toast({
@@ -58,17 +113,138 @@ const CarPaymentPage = () => {
     };
 
     fetchCarDetails();
-  }, [id, navigate, toast]);
+  }, [id, navigate, toast, carFromState, driverDetails]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!car || !driverDetails) {
+      toast({
+        title: "Error",
+        description: "Missing car or driver details",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Basic payment form validation
+    if (!cardNumber.trim() || !expirationDate.trim() || !securityCode.trim() || !nameOnCard.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all payment fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Basic card number validation (should be 13-19 digits)
+    if (!/^\d{13,19}$/.test(cardNumber.replace(/\s/g, ''))) {
+      toast({
+        title: "Invalid Card Number",
+        description: "Please enter a valid card number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Basic expiration date validation (MM/YY format)
+    if (!/^\d{2}\/\d{2}$/.test(expirationDate)) {
+      toast({
+        title: "Invalid Expiration Date",
+        description: "Please enter expiration date in MM/YY format",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Basic CVV validation (3-4 digits)
+    if (!/^\d{3,4}$/.test(securityCode)) {
+      toast({
+        title: "Invalid Security Code",
+        description: "Please enter a valid security code",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
-    // Simulate payment processing
-    setTimeout(() => {
+    try {
+      // Simulate payment processing
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Create the booking after payment is processed
+      const name = driverDetails.name || 'Car Guest';
+      const email = driverDetails.email || 'guest@example.com';
+
+      const response = await createBooking(
+        name,
+        email,
+        name,
+        [{
+          type: 'car',
+          id: car.id,
+          title: `${car.make} ${car.model}`,
+          image: car.images[0] || '',
+          price: totalAmount || (car.daily_rate + Math.round(car.daily_rate * 0.3)),
+          quantity: 1,
+          details: { ...car }
+        }],
+        'card',
+        undefined,
+        totalAmount || (car.daily_rate + Math.round(car.daily_rate * 0.3))
+      );
+
+      const bookingReference = response?.bookingReference;
+      const paymentAmount = totalAmount || (car.daily_rate + Math.round(car.daily_rate * 0.3));
+      const cartItems = [{
+        type: 'car',
+        id: car.id,
+        title: `${car.make} ${car.model}`,
+        image: car.images[0] || '',
+        price: paymentAmount,
+        quantity: 1,
+        details: { ...car }
+      }];
+
+      // Navigate to success page with booking details
+      navigate('/payment-success', {
+        state: {
+          bookingReference,
+          paymentAmount,
+          cartItems,
+          bookingDate: new Date().toISOString(),
+          checkoutData: {
+            contactInfo: {
+              email: driverDetails.email,
+              phone: driverDetails.phoneNumber,
+              address: driverDetails.countryOfResidence
+            },
+            travelers: [{
+              firstName: driverDetails.name.split(' ')[0] || '',
+              lastName: driverDetails.name.split(' ').slice(1).join(' ') || '',
+              email: driverDetails.email,
+              phone: driverDetails.phoneNumber
+            }]
+          }
+        }
+      });
+
+      toast({
+        title: "Payment Successful!",
+        description: `Your car rental has been confirmed. Reference: ${bookingReference}`,
+        variant: "default"
+      });
+
+    } catch (error) {
+      console.error("Payment/Booking error:", error);
+      toast({
+        title: "Payment Failed",
+        description: "There was an error processing your payment. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
       setIsProcessing(false);
-      navigate("/car-payment-success");
-    }, 1500);
+    }
   };
 
   if (loading) {
@@ -108,7 +284,17 @@ const CarPaymentPage = () => {
         <div className="container mx-auto max-w-4xl px-4" data-id="q1lqjfa4a" data-path="src/pages/CarPaymentPage.tsx">
           <div className="bg-white rounded-lg shadow-md overflow-hidden" data-id="m9m9zan5g" data-path="src/pages/CarPaymentPage.tsx">
             <div className="p-6 border-b border-gray-200" data-id="cs16jhg9s" data-path="src/pages/CarPaymentPage.tsx">
-              <h1 className="text-2xl font-bold text-center" data-id="xtyhyqjhi" data-path="src/pages/CarPaymentPage.tsx">Payment</h1>
+              <div className="flex items-center justify-between mb-4">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/car-booking/${id}`)}
+                  className="flex items-center gap-2"
+                >
+                  ← Back to Booking
+                </Button>
+                <h1 className="text-2xl font-bold" data-id="xtyhyqjhi" data-path="src/pages/CarPaymentPage.tsx">Payment</h1>
+                <div className="w-24"></div> {/* Spacer for centering */}
+              </div>
             </div>
 
             <div className="p-6" data-id="gt9ppoiuz" data-path="src/pages/CarPaymentPage.tsx">
@@ -133,12 +319,16 @@ const CarPaymentPage = () => {
                       <span>1</span>
                     </div>
                     <div className="flex justify-between mb-2">
-                      <span>Price per day:</span>
+                      <span>Car hire charge:</span>
                       <span>RM {car.daily_rate}</span>
+                    </div>
+                    <div className="flex justify-between mb-2">
+                      <span>Deposit:</span>
+                      <span>RM {Math.round(car.daily_rate * 0.3)}</span>
                     </div>
                     <div className="flex justify-between font-bold border-t border-gray-300 pt-2 mt-2">
                       <span>Total:</span>
-                      <span>RM {car.daily_rate}</span>
+                      <span>RM {totalAmount || (car.daily_rate + Math.round(car.daily_rate * 0.3))}</span>
                     </div>
                   </div>
                 </div>
@@ -155,7 +345,8 @@ const CarPaymentPage = () => {
                         className="w-full p-2 border rounded-md"
                         placeholder="Card number"
                         value={cardNumber}
-                        onChange={(e) => setCardNumber(e.target.value)}
+                        onChange={handleCardNumberChange}
+                        maxLength={23}
                         required data-id="3h7qybp89" data-path="src/pages/CarPaymentPage.tsx" />
 
                     </div>
@@ -171,7 +362,7 @@ const CarPaymentPage = () => {
                           className="w-full p-2 border rounded-md"
                           placeholder="Expiration date (MM / YY)"
                           value={expirationDate}
-                          onChange={(e) => setExpirationDate(e.target.value)}
+                          onChange={handleExpirationDateChange}
                           required data-id="mzzj6wclp" data-path="src/pages/CarPaymentPage.tsx" />
 
                       </div>
@@ -186,6 +377,7 @@ const CarPaymentPage = () => {
                           placeholder="Security code"
                           value={securityCode}
                           onChange={(e) => setSecurityCode(e.target.value)}
+                          maxLength={4}
                           required data-id="nlipw899a" data-path="src/pages/CarPaymentPage.tsx" />
 
                       </div>

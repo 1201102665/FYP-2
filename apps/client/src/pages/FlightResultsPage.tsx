@@ -997,25 +997,6 @@ const FlightResultsPage = () => {
                       currency={flight.currency}
                       travelClass={flight.travelClass}
                     />
-                    <AddToCartButton
-                      item={{
-                        id: Number(flight.id),
-                        type: 'flight',
-                        title: `${flight.departureAirport} to ${flight.arrivalAirport}`,
-                        price: Number(flight.price),
-                        quantity: 1,
-                        details: {
-                          airline: flight.airline,
-                          departureTime: flight.departureTime,
-                          arrivalTime: flight.arrivalTime,
-                          duration: flight.duration,
-                          departureAirport: flight.departureAirport,
-                          arrivalAirport: flight.arrivalAirport,
-                          direct: flight.direct
-                        },
-                        image: flight.logo
-                      }}
-                    />
                   </div>
                 ))
               )}

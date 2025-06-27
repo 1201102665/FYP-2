@@ -10,7 +10,6 @@ import Header from "@/components/Header"
 import Footer from "@/components/Footer"
 import { useToast } from "@/hooks/use-toast"
 import LoadingSpinner from "@/components/LoadingSpinner"
-import { createBooking } from '@/services/bookingService'
 
 const CarBookingPage = () => {
   const { id } = useParams()
@@ -87,31 +86,15 @@ const CarBookingPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!car) return;
-    // Collect driver details from the form (for now, use mock data)
-    const name = formData.name || 'Car Guest';
-    const email = formData.email || 'guest@example.com';
-    try {
-      await createBooking(
-        name,
-        email,
-        name,
-        [{
-          type: 'car',
-          id: car.id,
-          title: `${car.make} ${car.model}`,
-          image: car.images[0] || '',
-          price: car.daily_rate + Math.round(car.daily_rate * 0.3),
-          quantity: 1,
-          details: { ...car }
-        }],
-        'card',
-        undefined,
-        car.daily_rate + Math.round(car.daily_rate * 0.3)
-      );
-      navigate(`/car-payment/${id}`);
-    } catch (error) {
-      alert('Booking failed. Please try again.');
-    }
+
+    // Navigate to payment page with form data
+    navigate(`/car-payment/${car.id}`, {
+      state: {
+        car,
+        driverDetails: formData,
+        totalAmount: car.daily_rate + Math.round(car.daily_rate * 0.3)
+      }
+    });
   };
 
   if (isLoading) {
