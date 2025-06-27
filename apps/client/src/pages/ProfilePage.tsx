@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -12,7 +12,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useUserActivityContext } from '@/contexts/UserActivityContext';
 import { User, Camera, Edit3, Save, X, BookOpen, Settings, LogOut } from 'lucide-react';
-import PerformanceInsights from '@/components/PerformanceInsights';
 import BookingsList from '@/components/BookingsList';
 
 interface PersonalInfo {
@@ -34,10 +33,64 @@ type ActiveSection = 'profile' | 'bookings' | 'preferences';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, getToken } = useAuth();
   const { toast } = useToast();
   const { userActivity, updatePreferences } = useUserActivityContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize state from context only once
+  const [selectedPreferences, setSelectedPreferences] = useState<string[]>(
+    () => userActivity.preferences.preferredActivities || []
+  );
+  const [selectedDestinations, setSelectedDestinations] = useState<string[]>(
+    () => userActivity.preferences.favoriteDestinations || []
+  );
+  const [budgetRange, setBudgetRange] = useState<[number, number]>(
+    () => userActivity.preferences.budgetRange || [0, 5000]
+  );
+  const [travelStyle, setTravelStyle] = useState<string[]>(
+    () => userActivity.preferences.travelStyle || []
+  );
+
+  // Load initial preferences from backend
+  useEffect(() => {
+    const fetchPreferences = async () => {
+      try {
+        const token = getToken();
+        if (!token) {
+          console.error('No authentication token found');
+          return;
+        }
+
+        const response = await fetch('http://localhost:3001/api/preferences', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setSelectedPreferences(data.preferred_activities || []);
+          setSelectedDestinations(data.favorite_destinations || []);
+          setBudgetRange([data.budget_range_min || 0, data.budget_range_max || 5000]);
+          setTravelStyle(data.travel_style || []);
+        }
+      } catch (error) {
+        console.error('Error fetching preferences:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load preferences. Please try again.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    if (isAuthenticated) {
+      fetchPreferences();
+    }
+  }, [isAuthenticated, getToken, toast]);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -72,18 +125,6 @@ const ProfilePage: React.FC = () => {
 
   const [profilePicture, setProfilePicture] = useState<string>('');
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
-  const [selectedPreferences, setSelectedPreferences] = useState<string[]>(
-    userActivity.preferences.preferredActivities || []
-  );
-  const [selectedDestinations, setSelectedDestinations] = useState<string[]>(
-    userActivity.preferences.favoriteDestinations || []
-  );
-  const [budgetRange, setBudgetRange] = useState<[number, number]>(
-    userActivity.preferences.budgetRange || [0, 5000]
-  );
-  const [travelStyle, setTravelStyle] = useState<string[]>(
-    userActivity.preferences.travelStyle || []
-  );
 
   const activityOptions = [
     { id: 'beach', label: 'Beach & Relaxation' },
@@ -160,57 +201,118 @@ const ProfilePage: React.FC = () => {
     });
   };
 
-  const handleActivityToggle = (activityId: string) => {
-    setSelectedPreferences((prev) =>
+  const handleActivityToggle = useCallback((activityId: string) => {
+    setSelectedPreferences(prev =>
       prev.includes(activityId) ?
         prev.filter((id) => id !== activityId) :
         [...prev, activityId]
     );
-  };
+  }, []);
 
-  const handleDestinationToggle = (destinationId: string) => {
-    setSelectedDestinations((prev) =>
+  const handleDestinationToggle = useCallback((destinationId: string) => {
+    setSelectedDestinations(prev =>
       prev.includes(destinationId) ?
         prev.filter((id) => id !== destinationId) :
         [...prev, destinationId]
     );
-  };
+  }, []);
 
-  const handleTravelStyleToggle = (styleId: string) => {
-    setTravelStyle((prev) =>
+  const handleTravelStyleToggle = useCallback((styleId: string) => {
+    setTravelStyle(prev =>
       prev.includes(styleId) ?
         prev.filter((id) => id !== styleId) :
         [...prev, styleId]
     );
-  };
+  }, []);
 
-  const handleMinBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMinBudgetChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value);
     if (!isNaN(value)) {
-      setBudgetRange([value, budgetRange[1]]);
+      setBudgetRange(prev => [value, prev[1]]);
     }
-  };
+  }, []);
 
-  const handleMaxBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMaxBudgetChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value);
     if (!isNaN(value)) {
-      setBudgetRange([budgetRange[0], value]);
+      setBudgetRange(prev => [prev[0], value]);
     }
-  };
+  }, []);
 
-  const savePreferences = () => {
-    updatePreferences({
-      preferredActivities: selectedPreferences,
-      favoriteDestinations: selectedDestinations,
-      budgetRange: budgetRange,
-      travelStyle: travelStyle
-    });
+  const savePreferences = async () => {
+    try {
+      // Validate data before sending
+      if (!Array.isArray(selectedPreferences) || !Array.isArray(selectedDestinations)) {
+        throw new Error('Invalid preferences format');
+      }
 
-    toast({
-      title: "Preferences Updated",
-      description: "Your travel preferences have been saved successfully.",
-      variant: "default"
-    });
+      // Ensure budgetRange values are numbers
+      const minBudget = Number(budgetRange[0]);
+      const maxBudget = Number(budgetRange[1]);
+
+      if (isNaN(minBudget) || isNaN(maxBudget)) {
+        throw new Error('Invalid budget range');
+      }
+
+      const token = getToken();
+      if (!token) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to save preferences.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const response = await fetch('http://localhost:3001/api/preferences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          preferred_activities: selectedPreferences,
+          favorite_destinations: selectedDestinations,
+          budget_range_min: minBudget,
+          budget_range_max: maxBudget,
+          travel_style: Array.isArray(travelStyle) ? travelStyle : [travelStyle].filter(Boolean)
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Update local state
+        updatePreferences({
+          preferredActivities: selectedPreferences,
+          favoriteDestinations: selectedDestinations,
+          budgetRange: [minBudget, maxBudget],
+          travelStyle: Array.isArray(travelStyle) ? travelStyle : [travelStyle]
+        });
+
+        toast({
+          title: "Preferences Saved",
+          description: "Your travel preferences have been updated successfully.",
+          variant: "default"
+        });
+      } else {
+        // Handle server error response
+        const errorMessage = data.error || data.message || 'Failed to save preferences';
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      // Handle network or parsing errors
+      console.error('Error saving preferences:', error);
+      toast({
+        title: "Error",
+        description: "Network error occurred. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleLogout = () => {
@@ -647,10 +749,6 @@ const ProfilePage: React.FC = () => {
                 </nav>
               </CardContent>
             </Card>
-            
-            <div className="mt-6">
-              <PerformanceInsights />
-            </div>
           </div>
           
           {/* Right Column - Main Content */}
