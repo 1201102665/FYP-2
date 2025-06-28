@@ -36,12 +36,12 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
       className={className} data-id="5sgpo29om" data-path="src/components/AddToCartButton.tsx">
 
       {isInCart ?
-      <>
+        <>
           <Check className="mr-2 h-4 w-4" data-id="5kh8v7e5z" data-path="src/components/AddToCartButton.tsx" />
           Added to Cart
         </> :
 
-      <>
+        <>
           <ShoppingCart className="mr-2 h-4 w-4" data-id="88eu44syy" data-path="src/components/AddToCartButton.tsx" />
           Add to Cart
         </>

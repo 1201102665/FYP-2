@@ -1,12 +1,13 @@
 import express from 'express';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { logUserActivity } from '../middleware/auth.js';
+import { logUserActivity, authenticateToken } from '../middleware/auth.js';
 import db from '../config/database.js';
 
 const router = express.Router();
 
 // Submit review - updated to match new database schema
-router.post('/submit', asyncHandler(async (req, res) => {
+router.post('/submit', authenticateToken, asyncHandler(async (req, res) => {
+  console.log('🟢 /reviews/submit got:', req.body);
   // Check if user is logged in
   if (!req.user) {
     return res.status(401).json({
@@ -16,9 +17,9 @@ router.post('/submit', asyncHandler(async (req, res) => {
   }
 
   const userId = req.user.id;
-  const { 
-    item_type, 
-    item_id, 
+  const {
+    item_type,
+    item_id,
     booking_id,
     overall_rating,
     cleanliness_rating,

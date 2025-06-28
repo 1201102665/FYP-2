@@ -20,7 +20,7 @@ export interface Package {
  */
 export const getPackages = async (): Promise<Package[]> => {
   try {
-    const response = await api.get<Package[]>('/packages');
+    const response = await api.get<Package[]>('packages');
     return response || [];
   } catch (error) {
     console.error('❌ Error fetching packages:', error);
@@ -35,7 +35,7 @@ export const getPackageById = async (id: string | number): Promise<any> => {
   console.log('🔍 Frontend: Getting package by ID:', id);
   const response = await api.get(`packages/${id}`);
   console.log('📦 Frontend: API response:', response);
-  
+
   if (response) {
     console.log('✅ Frontend: Package found:', response);
     return response;
@@ -49,7 +49,7 @@ export const getPackageById = async (id: string | number): Promise<any> => {
  */
 export const searchPackages = async (searchParams: any): Promise<Package[]> => {
   try {
-    const response = await api.post<Package[]>('/packages/search', searchParams);
+    const response = await api.post<Package[]>('packages/search', searchParams);
     return response || [];
   } catch (error) {
     console.error('❌ Error searching packages:', error);
@@ -61,7 +61,7 @@ export const searchPackages = async (searchParams: any): Promise<Package[]> => {
  * Create a new package
  */
 export const createPackage = async (packageData: Omit<Package, 'id'>): Promise<Package> => {
-  const response = await api.post<Package>('/packages', packageData);
+  const response = await api.post<Package>('packages', packageData);
   return response;
 };
 
@@ -69,14 +69,14 @@ export const createPackage = async (packageData: Omit<Package, 'id'>): Promise<P
  * Update a package
  */
 export const updatePackage = async (id: number, packageData: Partial<Package>): Promise<void> => {
-  await api.put(`/packages/${id}`, packageData);
+  await api.put(`packages/${id}`, packageData);
 };
 
 /**
  * Delete a package
  */
 export const deletePackage = async (id: number): Promise<void> => {
-  await api.delete(`/packages/${id}`);
+  await api.delete(`packages/${id}`);
 };
 
 export default {

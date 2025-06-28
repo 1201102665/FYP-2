@@ -7,60 +7,55 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Load environment variables
-const envPath = join(__dirname, '.env');
-dotenv.config({ path: envPath });
+dotenv.config();
 
 // Required environment variables
-const requiredVars = [
-  'PORT',
+const requiredEnvVars = [
+  'JWT_SECRET',
+  'JWT_EXPIRES_IN',
   'DB_HOST',
   'DB_USER',
-  'DB_NAME',
-  'JWT_SECRET'
+  'DB_PASSWORD',
+  'DB_DATABASE'
 ];
 
-console.log('🔍 Checking environment configuration...');
+// Check for missing environment variables
+const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
 
-// Check if .env file exists
-if (!fs.existsSync(envPath)) {
-  console.error('❌ .env file not found!');
-  console.log('Creating default .env file...');
-  
-  const defaultEnv = `PORT=3001
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=
-DB_NAME=aerotrav_fyp
-DB_PORT=3306
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+if (missingEnvVars.length > 0) {
+  console.error('\n❌ Missing required environment variables:');
+  missingEnvVars.forEach(envVar => {
+    console.error(`   - ${envVar}`);
+  });
+  console.error('\n📝 Please create a .env file with the following variables:');
+  console.error(`
+# JWT Configuration
+JWT_SECRET=your_jwt_secret_here
 JWT_EXPIRES_IN=7d
-NODE_ENV=development`;
 
-  fs.writeFileSync(envPath, defaultEnv);
-  console.log('✅ Default .env file created');
+# Database Configuration
+DB_HOST=localhost
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+DB_DATABASE=aerotrav_fyp
+`);
+  process.exit(1);
+} else {
+  console.log('\n✅ All required environment variables are set!\n');
   
-  // Reload environment variables
-  dotenv.config({ path: envPath });
-}
-
-// Check required variables
-let missingVars = [];
-for (const varName of requiredVars) {
-  if (!process.env[varName]) {
-    missingVars.push(varName);
+  // Additional checks
+  if (process.env.JWT_SECRET.length < 32) {
+    console.warn('⚠️  WARNING: JWT_SECRET should be at least 32 characters long for security');
+  }
+  
+  if (!process.env.JWT_EXPIRES_IN.match(/^\d+[hdwmy]$/)) {
+    console.warn('⚠️  WARNING: JWT_EXPIRES_IN should be in format: 7d, 24h, 1w, 1m, 1y');
   }
 }
 
-if (missingVars.length > 0) {
-  console.error('❌ Missing required environment variables:', missingVars.join(', '));
-  process.exit(1);
-}
-
-console.log('✅ All required environment variables are set');
 console.log('📊 Current configuration:');
-console.log('- PORT:', process.env.PORT);
 console.log('- DB_HOST:', process.env.DB_HOST);
-console.log('- DB_NAME:', process.env.DB_NAME);
+console.log('- DB_NAME:', process.env.DB_DATABASE);
 console.log('- NODE_ENV:', process.env.NODE_ENV);
 
 // Test database connection

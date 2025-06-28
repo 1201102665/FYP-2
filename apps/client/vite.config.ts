@@ -6,7 +6,7 @@ import path from "path";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 5173,
+    port: 5174,
     proxy: {
       // Proxy API routes to Node.js backend server
       '/api': {
@@ -26,7 +26,6 @@ export default defineConfig(({ mode }) => ({
           });
         },
       }
-      
     }
   },
   plugins: [react()],

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCartContext } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,11 +12,11 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { 
-  CreditCard, 
-  Lock, 
-  Shield, 
-  CheckCircle, 
+import {
+  CreditCard,
+  Lock,
+  Shield,
+  CheckCircle,
   ArrowLeft,
   AlertCircle,
   Calendar,
@@ -39,11 +40,21 @@ interface PaymentInfo {
   billingCountry: string;
 }
 
+interface CartItem {
+  id: string | number;
+  type: string;
+  name: string;
+  price: number;
+  quantity: number;
+  details?: Record<string, unknown>;
+}
+
 const PaymentPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { items, clearCart } = useCartContext();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const checkoutData = location.state?.checkoutData;
   const cartItems = location.state?.cartItems || items;
@@ -149,6 +160,17 @@ const PaymentPage: React.FC = () => {
   const processPayment = async () => {
     if (!validatePayment()) return;
 
+    // Check if user is authenticated
+    if (!user) {
+      setErrorMessage('Please log in to complete your booking.');
+      toast({
+        title: 'Authentication Required',
+        description: 'You must be logged in to complete your booking.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setIsProcessing(true);
     setErrorMessage(null);
 
@@ -164,13 +186,37 @@ const PaymentPage: React.FC = () => {
       }
 
       // Get user info (if logged in)
-      const userId = (typeof window !== 'undefined' && localStorage.getItem('userId')) || undefined;
+      const userId = user?.id || undefined;
       const userEmail = checkoutData.contactInfo.email;
       const userName = checkoutData.travelers[0]?.firstName + ' ' + checkoutData.travelers[0]?.lastName;
       const paymentMethod = 'credit_card';
       const paymentIntentId = undefined; // Not used in this flow
-      const totalAmount = checkoutData.total;
+
+      // Calculate total amount from cart items instead of relying on checkoutData.total
+      const totalAmount = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       const items = cartItems;
+
+      console.log('🔍 PaymentPage - Data being sent to booking service:');
+      console.log('👤 User ID:', userId);
+      console.log('📧 User Email:', userEmail);
+      console.log('👤 User Name:', userName);
+      console.log('💳 Payment Method:', paymentMethod);
+      console.log('💰 Total Amount:', totalAmount);
+      console.log('💰 Total Amount (from checkoutData):', checkoutData.total);
+      console.log('📦 Cart Items:', items);
+      console.log('📦 Cart Items length:', items?.length);
+
+      // Check if cart items exist
+      if (!items || items.length === 0) {
+        setErrorMessage('No items in cart to book.');
+        toast({
+          title: 'Booking Failed',
+          description: 'Your cart is empty. Please add items before proceeding.',
+          variant: 'destructive'
+        });
+        setIsProcessing(false);
+        return;
+      }
 
       const bookingResponse = await bookingService.createBooking(
         userId || '',
@@ -234,8 +280,8 @@ const PaymentPage: React.FC = () => {
         <div className="container mx-auto px-4">
           {/* Header */}
           <div className="flex items-center gap-4 mb-8">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => navigate('/checkout')}
               className="flex items-center gap-2"
             >
@@ -243,6 +289,12 @@ const PaymentPage: React.FC = () => {
               Back to Checkout
             </Button>
             <h1 className="text-3xl font-bold">Payment</h1>
+            {user && (
+              <div className="ml-auto flex items-center gap-2 text-sm text-gray-600">
+                <User className="h-4 w-4" />
+                <span>Logged in as: {user.name}</span>
+              </div>
+            )}
           </div>
 
           {errorMessage && (
@@ -253,10 +305,20 @@ const PaymentPage: React.FC = () => {
             </Alert>
           )}
 
+          {!user && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Authentication Required</AlertTitle>
+              <AlertDescription>
+                You must be logged in to complete your booking. Please log in or create an account.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Payment Form */}
             <div className="lg:col-span-2 space-y-8">
-              
+
               {/* Credit Card Information */}
               <Card>
                 <CardHeader>
@@ -278,7 +340,7 @@ const PaymentPage: React.FC = () => {
                       required
                     />
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="expiryDate">Expiry Date *</Label>
@@ -305,7 +367,7 @@ const PaymentPage: React.FC = () => {
                       />
                     </div>
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="cardholderName">Cardholder Name *</Label>
                     <Input
@@ -340,7 +402,7 @@ const PaymentPage: React.FC = () => {
                       Same as contact address
                     </label>
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="billingAddress">Address *</Label>
                     <Input
@@ -351,7 +413,7 @@ const PaymentPage: React.FC = () => {
                       required
                     />
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <Label htmlFor="billingCity">City *</Label>
@@ -410,7 +472,7 @@ const PaymentPage: React.FC = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-3">
-                    {cartItems.map((item: any) => (
+                    {cartItems.map((item: CartItem) => (
                       <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center gap-3">
                           {getItemIcon(item.type)}
@@ -429,7 +491,7 @@ const PaymentPage: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Subtotal</span>
-                      <span>${cartItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0)}</span>
+                      <span>${cartItems.reduce((sum: number, item: CartItem) => sum + (item.price * item.quantity), 0)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Service Fee</span>
@@ -437,7 +499,7 @@ const PaymentPage: React.FC = () => {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Taxes & Fees</span>
-                      <span>${Math.round(cartItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0) * 0.08)}</span>
+                      <span>${Math.round(cartItems.reduce((sum: number, item: CartItem) => sum + (item.price * item.quantity), 0) * 0.08)}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between text-lg font-semibold">
@@ -446,14 +508,19 @@ const PaymentPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <Button 
+                  <Button
                     onClick={processPayment}
-                    disabled={isProcessing}
+                    disabled={isProcessing || !user}
                     className="w-full bg-aerotrav-blue hover:bg-aerotrav-blue-700"
                     size="lg"
                   >
                     {isProcessing ? (
                       <>Processing...</>
+                    ) : !user ? (
+                      <>
+                        <User className="h-4 w-4 mr-2" />
+                        Please Log In
+                      </>
                     ) : (
                       <>
                         <CreditCard className="h-4 w-4 mr-2" />

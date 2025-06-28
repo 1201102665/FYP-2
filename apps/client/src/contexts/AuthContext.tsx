@@ -5,15 +5,18 @@ interface User {
   id: string;
   name: string;
   email: string;
+  role: string;
+  status: string;
   avatar?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  isAdmin: boolean;
+  login: (email: string, password: string, isAdminLogin?: boolean) => Promise<boolean>;
   signup: (name: string, email: string, password: string, phone: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => string;
   getToken: () => string | null;
 }
 
@@ -45,7 +48,7 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
     }
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string, isAdminLogin = false): Promise<boolean> => {
     try {
       // Validate inputs
       if (!email || !password) {
@@ -58,7 +61,8 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
       }
 
       // Call the backend API
-      const response = await fetch('http://localhost:3001/api/auth/login', {
+      const endpoint = isAdminLogin ? '/api/auth/admin/login' : '/api/auth/login';
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -92,8 +96,20 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
           id: data.user.id.toString(),
           name: data.user.name,
           email: data.user.email,
+          role: data.user.role || 'user',
+          status: data.user.status || 'active',
           avatar: `https://i.pravatar.cc/150?u=${email}`
         };
+
+        // For admin login, verify the role
+        if (isAdminLogin && loggedInUser.role !== 'admin') {
+          toast({
+            title: "Login Failed",
+            description: "Invalid admin credentials.",
+            variant: "destructive"
+          });
+          return false;
+        }
 
         setUser(loggedInUser);
         setIsAuthenticated(true);
@@ -184,6 +200,8 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
           id: data.user.id.toString(),
           name: data.user.name,
           email: data.user.email,
+          role: data.user.role || 'user',
+          status: data.user.status || 'active',
           avatar: `https://i.pravatar.cc/150?u=${email}`
         };
 
@@ -218,33 +236,43 @@ export const AuthProvider: React.FC<{children: ReactNode;}> = ({ children }) => 
   };
 
   const logout = () => {
+    // Store the role before clearing user data
+    const wasAdmin = user?.role === 'admin';
+    
+    // Clear user data
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    
+    // Show toast message
     toast({
       title: "Logged Out",
       description: "You have been successfully logged out.",
       variant: "default"
     });
+
+    // Return the redirect path based on role
+    return wasAdmin ? '/admin/login' : '/login';
   };
 
   const getToken = () => {
     return localStorage.getItem('token');
   };
 
-  return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated, 
-      login, 
-      signup, 
-      logout,
-      getToken 
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const isAdmin = user?.role === 'admin';
+
+  const value: AuthContextType = {
+    user,
+    isAuthenticated,
+    isAdmin,
+    login,
+    signup,
+    logout,
+    getToken
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {

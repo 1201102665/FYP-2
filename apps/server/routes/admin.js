@@ -1,19 +1,27 @@
 import express from 'express';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { requireAuth, logUserActivity } from '../middleware/auth.js';
+import { requireAuth, requireAdmin, logUserActivity } from '../middleware/auth.js';
 import db from '../config/database.js';
 
 const router = express.Router();
 
+// Apply requireAuth and requireAdmin middleware to all admin routes
+router.use(requireAuth);
+router.use(requireAdmin);
+
+// Error handler middleware for admin routes
+const adminErrorHandler = (error, req, res, next) => {
+  console.error('Admin route error:', error);
+  res.status(500).json({
+    success: false,
+    message: error.message || 'Internal server error'
+  });
+};
+
+router.use(adminErrorHandler);
+
 // Admin Dashboard - Get system overview
 router.get('/dashboard', asyncHandler(async (req, res) => {
-  if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      message: 'Admin access required'
-    });
-  }
-
   try {
     // Get user statistics
     const userStats = await db.queryOne(`
@@ -106,107 +114,75 @@ router.get('/dashboard', asyncHandler(async (req, res) => {
 
 // Admin Bookings Management
 router.get('/bookings', asyncHandler(async (req, res) => {
-  if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      message: 'Admin access required'
-    });
+  const { page = 1, limit = 20, status, payment_status, search } = req.query;
+  const offset = (page - 1) * limit;
+
+  let query = `
+    SELECT 
+      b.*,
+      u.name as user_name,
+      u.email as user_email,
+      u.phone as user_phone
+    FROM bookings b
+    JOIN users u ON b.user_id = u.id
+    WHERE 1=1
+  `;
+  const params = [];
+
+  if (status) {
+    query += ' AND b.booking_status = ?';
+    params.push(status);
   }
 
-  const { 
-    status, 
-    payment_status, 
-    page = 1, 
-    limit = 20,
-    search = ''
-  } = req.query;
+  if (payment_status) {
+    query += ' AND b.payment_status = ?';
+    params.push(payment_status);
+  }
 
-  try {
-    let whereConditions = ['1=1'];
-    let queryParams = [];
+  if (search) {
+    query += ` AND (
+      b.booking_reference LIKE ? OR 
+      u.name LIKE ? OR 
+      u.email LIKE ?
+    )`;
+    const searchTerm = `%${search}%`;
+    params.push(searchTerm, searchTerm, searchTerm);
+  }
 
-    if (status) {
-      whereConditions.push('b.booking_status = ?');
-      queryParams.push(status);
-    }
+  const countQuery = query.replace('SELECT b.*, u.name as user_name, u.email as user_email, u.phone as user_phone', 'SELECT COUNT(*) as total');
+  const totalResult = await db.queryOne(countQuery, params);
+  const total = totalResult.total;
 
-    if (payment_status) {
-      whereConditions.push('b.payment_status = ?');
-      queryParams.push(payment_status);
-    }
+  query += ' ORDER BY b.created_at DESC LIMIT ? OFFSET ?';
+  params.push(parseInt(limit), offset);
 
-    if (search) {
-      whereConditions.push('(b.booking_reference LIKE ? OR u.name LIKE ? OR u.email LIKE ?)');
-      queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
-    }
+  const bookings = await db.query(query, params);
 
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-    
-    const bookings = await db.query(`
-      SELECT 
-        b.id,
-        b.booking_reference,
-        b.service_type,
-        b.total_amount,
-        b.booking_status,
-        b.payment_status,
-        b.booking_date,
-        b.return_date,
-        b.created_at,
-        b.updated_at,
-        u.name as user_name,
-        u.email as user_email,
-        u.phone as user_phone
-      FROM bookings b
-      JOIN users u ON b.user_id = u.id
-      WHERE ${whereConditions.join(' AND ')}
-      ORDER BY b.created_at DESC
-      LIMIT ? OFFSET ?
-    `, [...queryParams, parseInt(limit), offset]);
+  // Transform the data to ensure proper types
+  const transformedBookings = bookings.map(booking => ({
+    ...booking,
+    id: parseInt(booking.id),
+    total_amount: parseFloat(booking.total_amount) || 0,
+    booking_status: booking.booking_status || 'pending',
+    payment_status: booking.payment_status || 'pending'
+  }));
 
-    // Get total count
-    const countResult = await db.queryOne(`
-      SELECT COUNT(*) as total
-      FROM bookings b
-      JOIN users u ON b.user_id = u.id
-      WHERE ${whereConditions.join(' AND ')}
-    `, queryParams);
-
-    res.json({
-      success: true,
-      data: {
-        bookings: bookings.map(booking => ({
-          ...booking,
-          id: parseInt(booking.id),
-          total_amount: parseFloat(booking.total_amount)
-        })),
-        pagination: {
-          current_page: parseInt(page),
-          total_pages: Math.ceil(countResult.total / parseInt(limit)),
-          total_records: parseInt(countResult.total),
-          per_page: parseInt(limit)
-        }
+  res.json({
+    success: true,
+    data: {
+      bookings: transformedBookings,
+      pagination: {
+        total_records: total,
+        current_page: parseInt(page),
+        total_pages: Math.ceil(total / limit),
+        per_page: parseInt(limit)
       }
-    });
-
-  } catch (error) {
-    console.error('Admin bookings error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch bookings'
-    });
-  }
+    }
+  });
 }));
 
 // Admin Analytics
 router.get('/analytics', asyncHandler(async (req, res) => {
-  if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      message: 'Admin access required'
-    });
-  }
-
   const { period = '30d' } = req.query;
   
   let dateFilter;
@@ -311,13 +287,6 @@ router.get('/analytics', asyncHandler(async (req, res) => {
 
 // System Settings Management
 router.get('/settings', asyncHandler(async (req, res) => {
-  if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      message: 'Admin access required'
-    });
-  }
-
   try {
     // Get system settings (if you have a settings table)
     // For now, return some default system info
@@ -349,15 +318,7 @@ router.get('/settings', asyncHandler(async (req, res) => {
 // Content Management System - migrated from legacy admin interface
 
 // Get all content types for management
-router.get('/content', requireAuth, asyncHandler(async (req, res) => {
-  // Only allow admin users
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      message: 'Admin access required'
-    });
-  }
-
+router.get('/content', asyncHandler(async (req, res) => {
   try {
     // Get counts for all content types
     const flightsCount = await db.queryOne('SELECT COUNT(*) as count FROM flights');
@@ -426,14 +387,7 @@ router.get('/content', requireAuth, asyncHandler(async (req, res) => {
 }));
 
 // Flight Management - migrated from content/flights.php
-router.get('/flights', requireAuth, asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      message: 'Admin access required'
-    });
-  }
-
+router.get('/flights', asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, status = '', airline = '', search = '' } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(limit);
 
@@ -492,14 +446,7 @@ router.get('/flights', requireAuth, asyncHandler(async (req, res) => {
 }));
 
 // Hotel Management - migrated from content/hotels.php
-router.get('/hotels', requireAuth, asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      message: 'Admin access required'
-    });
-  }
-
+router.get('/hotels', asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, status = '', destination = '', search = '' } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(limit);
 
@@ -558,14 +505,7 @@ router.get('/hotels', requireAuth, asyncHandler(async (req, res) => {
 }));
 
 // Car Management - migrated from content/cars.php
-router.get('/cars', requireAuth, asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      message: 'Admin access required'
-    });
-  }
-
+router.get('/cars', asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, status = '', brand = '', search = '' } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(limit);
 
@@ -624,14 +564,7 @@ router.get('/cars', requireAuth, asyncHandler(async (req, res) => {
 }));
 
 // Package Management - migrated from content/packages.php
-router.get('/packages', requireAuth, asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      message: 'Admin access required'
-    });
-  }
-
+router.get('/packages', asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, status = '', destination = '', search = '' } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(limit);
 
@@ -690,14 +623,7 @@ router.get('/packages', requireAuth, asyncHandler(async (req, res) => {
 }));
 
 // Update content item status (activate/deactivate)
-router.put('/content/:type/:id/status', requireAuth, asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      message: 'Admin access required'
-    });
-  }
-
+router.put('/content/:type/:id/status', asyncHandler(async (req, res) => {
   const { type, id } = req.params;
   const { status } = req.body;
 
@@ -746,14 +672,7 @@ router.put('/content/:type/:id/status', requireAuth, asyncHandler(async (req, re
 }));
 
 // Delete content item
-router.delete('/content/:type/:id', requireAuth, asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      message: 'Admin access required'
-    });
-  }
-
+router.delete('/content/:type/:id', asyncHandler(async (req, res) => {
   const { type, id } = req.params;
 
   // Validate content type
@@ -800,14 +719,7 @@ router.delete('/content/:type/:id', requireAuth, asyncHandler(async (req, res) =
 }));
 
 // System Information - migrated from admin dashboard
-router.get('/system-info', requireAuth, asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      message: 'Admin access required'
-    });
-  }
-
+router.get('/system-info', asyncHandler(async (req, res) => {
   try {
     // Database statistics
     const dbStats = {
@@ -850,6 +762,667 @@ router.get('/system-info', requireAuth, asyncHandler(async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching system information'
+    });
+  }
+}));
+
+// Admin Users Management
+router.get('/users', asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20, search = '', status = '' } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(limit);
+
+  try {
+    let whereConditions = ['1=1'];
+    let queryParams = [];
+
+    if (status) {
+      whereConditions.push('status = ?');
+      queryParams.push(status);
+    }
+
+    if (search) {
+      whereConditions.push('(name LIKE ? OR email LIKE ?)');
+      queryParams.push(`%${search}%`, `%${search}%`);
+    }
+
+    const users = await db.query(`
+      SELECT id, name, email, role, status, created_at, updated_at
+      FROM users
+      WHERE ${whereConditions.join(' AND ')}
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
+    `, [...queryParams, parseInt(limit), offset]);
+
+    const countResult = await db.queryOne(`
+      SELECT COUNT(*) as total
+      FROM users
+      WHERE ${whereConditions.join(' AND ')}
+    `, queryParams);
+
+    res.json({
+      success: true,
+      data: {
+        users: users.map(user => ({
+          ...user,
+          id: parseInt(user.id)
+        })),
+        pagination: {
+          current_page: parseInt(page),
+          total_pages: Math.ceil(countResult.total / parseInt(limit)),
+          total_records: parseInt(countResult.total),
+          per_page: parseInt(limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch users'
+    });
+  }
+}));
+
+// Update user status
+router.put('/users/:id/status', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  try {
+    const user = await db.queryOne('SELECT * FROM users WHERE id = ?', [id]);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Validate status
+    const validStatuses = ['active', 'pending', 'inactive'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be one of: ' + validStatuses.join(', ')
+      });
+    }
+
+    // Don't allow deactivating the last admin
+    if (user.role === 'admin' && status === 'inactive') {
+      const adminCount = await db.queryOne('SELECT COUNT(*) as count FROM users WHERE role = "admin" AND status = "active"');
+      if (adminCount.count <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot deactivate the last admin user'
+        });
+      }
+    }
+
+    await db.query('UPDATE users SET status = ?, updated_at = NOW() WHERE id = ?', [status, id]);
+
+    // Log admin activity
+    await logUserActivity(req.user.id, req.ip, 'update_user_status', {
+      user_id: id,
+      new_status: status,
+      user_agent: req.get('User-Agent')
+    });
+
+    res.json({
+      success: true,
+      message: 'User status updated successfully'
+    });
+  } catch (error) {
+    console.error('Update user status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update user status'
+    });
+  }
+}));
+
+// Delete user
+router.delete('/users/:id', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Check if user exists
+    const user = await db.queryOne('SELECT * FROM users WHERE id = ?', [id]);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Don't allow deleting the last admin
+    if (user.role === 'admin') {
+      const adminCount = await db.queryOne('SELECT COUNT(*) as count FROM users WHERE role = "admin"');
+      if (adminCount.count <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot delete the last admin user'
+        });
+      }
+    }
+
+    // Check for related records
+    const hasBookings = await db.queryOne('SELECT COUNT(*) as count FROM bookings WHERE user_id = ?', [id]);
+    const hasReviews = await db.queryOne('SELECT COUNT(*) as count FROM reviews WHERE user_id = ?', [id]);
+
+    if (hasBookings.count > 0 || hasReviews.count > 0) {
+      // Soft delete - just update status to 'deleted'
+      await db.query('UPDATE users SET status = "deleted", updated_at = NOW() WHERE id = ?', [id]);
+    } else {
+      // Hard delete if no related records
+      await db.query('DELETE FROM users WHERE id = ?', [id]);
+    }
+
+    // Log admin activity
+    await logUserActivity(req.user.id, req.ip, 'delete_user', {
+      deleted_user_id: id,
+      user_agent: req.get('User-Agent')
+    });
+
+    res.json({
+      success: true,
+      message: 'User deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete user'
+    });
+  }
+}));
+
+// Booking Management
+router.get('/bookings/:id', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const booking = await db.queryOne(`
+      SELECT 
+        b.*,
+        u.name as user_name,
+        u.email as user_email,
+        u.phone as user_phone
+      FROM bookings b
+      JOIN users u ON b.user_id = u.id
+      WHERE b.id = ?
+    `, [id]);
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    // Parse the details JSON string
+    const details = JSON.parse(booking.details || '[]');
+
+    res.json({
+      success: true,
+      data: {
+        id: parseInt(booking.id),
+        booking_reference: booking.booking_reference,
+        user_name: booking.user_name,
+        user_email: booking.user_email,
+        user_phone: booking.user_phone,
+        total_amount: parseFloat(booking.total_amount),
+        status: booking.booking_status.toUpperCase(),
+        payment_status: booking.payment_status,
+        booking_date: booking.booking_date,
+        details: details
+      }
+    });
+  } catch (error) {
+    console.error('Get booking details error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch booking details'
+    });
+  }
+}));
+
+// Update booking status
+router.put('/bookings/:id/status', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!['confirmed', 'rejected'].includes(status)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid status. Must be either confirmed or rejected.'
+    });
+  }
+
+  try {
+    // Update the booking status
+    await db.query(
+      'UPDATE bookings SET booking_status = ?, updated_at = NOW() WHERE id = ?',
+      [status, id]
+    );
+
+    // Get the updated booking details
+    const [booking] = await db.query(
+      `SELECT b.*, u.name as user_name, u.email as user_email 
+       FROM bookings b 
+       JOIN users u ON b.user_id = u.id 
+       WHERE b.id = ?`,
+      [id]
+    );
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    // Log admin activity
+    await logUserActivity(req.user.id, req.ip, 'booking_status_update', {
+      booking_id: id,
+      new_status: status,
+      user_agent: req.get('User-Agent')
+    });
+
+    // Send email notification to user
+    const emailSubject = status === 'confirmed' ? 'Your Booking is Confirmed!' : 'Booking Update';
+    const emailContent = status === 'confirmed' 
+      ? `Your booking (ID: ${booking.id}) has been confirmed. Thank you for choosing our service!`
+      : `Your booking (ID: ${booking.id}) has been reviewed. Please check your booking status in your account.`;
+
+    // TODO: Uncomment when email service is ready
+    /*
+    await sendEmail({
+      to: booking.user_email,
+      subject: emailSubject,
+      text: emailContent
+    });
+    */
+
+    res.json({
+      success: true,
+      message: `Booking status updated to ${status}`,
+      data: {
+        booking: {
+          ...booking,
+          id: parseInt(booking.id),
+          total_amount: parseFloat(booking.total_amount) || 0
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error updating booking status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update booking status'
+    });
+  }
+}));
+
+// Content Management Overview
+router.get('/content', asyncHandler(async (req, res) => {
+  try {
+    const [
+      flightStats,
+      hotelStats,
+      carStats,
+      packageStats
+    ] = await Promise.all([
+      db.queryOne('SELECT COUNT(*) as total, SUM(CASE WHEN status = "active" THEN 1 ELSE 0 END) as active FROM flights'),
+      db.queryOne('SELECT COUNT(*) as total, SUM(CASE WHEN status = "active" THEN 1 ELSE 0 END) as active FROM hotels'),
+      db.queryOne('SELECT COUNT(*) as total, SUM(CASE WHEN status = "active" THEN 1 ELSE 0 END) as active FROM cars'),
+      db.queryOne('SELECT COUNT(*) as total, SUM(CASE WHEN status = "active" THEN 1 ELSE 0 END) as active FROM packages')
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        flights: {
+          total: parseInt(flightStats.total || 0),
+          active: parseInt(flightStats.active || 0)
+        },
+        hotels: {
+          total: parseInt(hotelStats.total || 0),
+          active: parseInt(hotelStats.active || 0)
+        },
+        cars: {
+          total: parseInt(carStats.total || 0),
+          active: parseInt(carStats.active || 0)
+        },
+        packages: {
+          total: parseInt(packageStats.total || 0),
+          active: parseInt(packageStats.active || 0)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get content overview error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch content overview'
+    });
+  }
+}));
+
+// Update content status
+router.put('/content/:type/:id/status', asyncHandler(async (req, res) => {
+  const { type, id } = req.params;
+  const { status } = req.body;
+
+  const validTypes = ['flights', 'hotels', 'cars', 'packages'];
+  if (!validTypes.includes(type)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid content type'
+    });
+  }
+
+  try {
+    const item = await db.queryOne(`SELECT * FROM ${type} WHERE id = ?`, [id]);
+    
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: `${type.slice(0, -1)} not found`
+      });
+    }
+
+    await db.query(`UPDATE ${type} SET status = ?, updated_at = NOW() WHERE id = ?`, [status, id]);
+
+    // Log admin activity
+    await logUserActivity(req.user.id, req.ip, 'update_content_status', {
+      content_type: type,
+      content_id: id,
+      new_status: status,
+      user_agent: req.get('User-Agent')
+    });
+
+    res.json({
+      success: true,
+      message: `${type.slice(0, -1)} status updated successfully`
+    });
+  } catch (error) {
+    console.error('Update content status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update content status'
+    });
+  }
+}));
+
+// Reviews Management
+router.get('/reviews', asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20, status = '', search = '' } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(limit);
+
+  try {
+    let whereConditions = ['1=1'];
+    let queryParams = [];
+
+    if (status) {
+      whereConditions.push('r.status = ?');
+      queryParams.push(status);
+    }
+
+    if (search) {
+      whereConditions.push('(r.title LIKE ? OR r.content LIKE ? OR u.name LIKE ?)');
+      queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    const reviews = await db.query(`
+      SELECT 
+        r.*,
+        u.name as user_name,
+        u.email as user_email
+      FROM reviews r
+      JOIN users u ON r.user_id = u.id
+      WHERE ${whereConditions.join(' AND ')}
+      ORDER BY r.created_at DESC
+      LIMIT ? OFFSET ?
+    `, [...queryParams, parseInt(limit), offset]);
+
+    const countResult = await db.queryOne(`
+      SELECT COUNT(*) as total
+      FROM reviews r
+      JOIN users u ON r.user_id = u.id
+      WHERE ${whereConditions.join(' AND ')}
+    `, queryParams);
+
+    res.json({
+      success: true,
+      data: {
+        reviews: reviews.map(review => ({
+          ...review,
+          id: parseInt(review.id),
+          rating: parseFloat(review.rating)
+        })),
+        pagination: {
+          current_page: parseInt(page),
+          total_pages: Math.ceil(countResult.total / parseInt(limit)),
+          total_records: parseInt(countResult.total),
+          per_page: parseInt(limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get reviews error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch reviews'
+    });
+  }
+}));
+
+// Update review status
+router.put('/reviews/:id/status', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  try {
+    const review = await db.queryOne('SELECT * FROM reviews WHERE id = ?', [id]);
+    
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Review not found'
+      });
+    }
+
+    await db.query('UPDATE reviews SET status = ?, updated_at = NOW() WHERE id = ?', [status, id]);
+
+    // Log admin activity
+    await logUserActivity(req.user.id, req.ip, 'update_review_status', {
+      review_id: id,
+      new_status: status,
+      user_agent: req.get('User-Agent')
+    });
+
+    res.json({
+      success: true,
+      message: 'Review status updated successfully'
+    });
+  } catch (error) {
+    console.error('Update review status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update review status'
+    });
+  }
+}));
+
+// Delete review
+router.delete('/reviews/:id', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const review = await db.queryOne('SELECT * FROM reviews WHERE id = ?', [id]);
+    
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Review not found'
+      });
+    }
+
+    await db.query('DELETE FROM reviews WHERE id = ?', [id]);
+
+    // Log admin activity
+    await logUserActivity(req.user.id, req.ip, 'delete_review', {
+      review_id: id,
+      user_agent: req.get('User-Agent')
+    });
+
+    res.json({
+      success: true,
+      message: 'Review deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete review error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete review'
+    });
+  }
+}));
+
+// Analytics
+router.get('/analytics', asyncHandler(async (req, res) => {
+  const { period = '30d' } = req.query;
+  
+  let dateFilter;
+  switch (period) {
+    case '7d':
+      dateFilter = 'DATE_SUB(NOW(), INTERVAL 7 DAY)';
+      break;
+    case '30d':
+      dateFilter = 'DATE_SUB(NOW(), INTERVAL 30 DAY)';
+      break;
+    case '90d':
+      dateFilter = 'DATE_SUB(NOW(), INTERVAL 90 DAY)';
+      break;
+    case '1y':
+      dateFilter = 'DATE_SUB(NOW(), INTERVAL 1 YEAR)';
+      break;
+    default:
+      dateFilter = 'DATE_SUB(NOW(), INTERVAL 30 DAY)';
+  }
+
+  try {
+    const [
+      userStats,
+      bookingStats,
+      revenueStats,
+      searchStats
+    ] = await Promise.all([
+      db.query(`
+        SELECT 
+          DATE(created_at) as date,
+          COUNT(*) as count
+        FROM users
+        WHERE created_at >= ${dateFilter}
+        GROUP BY DATE(created_at)
+        ORDER BY date
+      `),
+      db.query(`
+        SELECT 
+          DATE(created_at) as date,
+          COUNT(*) as count,
+          SUM(CASE WHEN booking_status = 'confirmed' THEN 1 ELSE 0 END) as confirmed
+        FROM bookings
+        WHERE created_at >= ${dateFilter}
+        GROUP BY DATE(created_at)
+        ORDER BY date
+      `),
+      db.query(`
+        SELECT 
+          DATE(created_at) as date,
+          SUM(total_amount) as revenue
+        FROM bookings
+        WHERE created_at >= ${dateFilter}
+          AND payment_status = 'paid'
+        GROUP BY DATE(created_at)
+        ORDER BY date
+      `),
+      db.query(`
+        SELECT 
+          DATE(created_at) as date,
+          COUNT(*) as count
+        FROM search_logs
+        WHERE created_at >= ${dateFilter}
+        GROUP BY DATE(created_at)
+        ORDER BY date
+      `)
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        users: userStats,
+        bookings: bookingStats,
+        revenue: revenueStats.map(stat => ({
+          ...stat,
+          revenue: parseFloat(stat.revenue || 0)
+        })),
+        searches: searchStats
+      }
+    });
+  } catch (error) {
+    console.error('Get analytics error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch analytics data'
+    });
+  }
+}));
+
+// System Information
+router.get('/system-info', asyncHandler(async (req, res) => {
+  try {
+    const [
+      dbStats,
+      serverStats
+    ] = await Promise.all([
+      db.query(`
+        SELECT 
+          table_name, 
+          table_rows,
+          data_length,
+          index_length
+        FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+      `),
+      Promise.resolve({
+        node_version: process.version,
+        platform: process.platform,
+        memory_usage: process.memoryUsage(),
+        uptime: process.uptime()
+      })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        database: {
+          tables: dbStats.map(stat => ({
+            name: stat.table_name,
+            rows: parseInt(stat.table_rows || 0),
+            size: parseInt(stat.data_length || 0) + parseInt(stat.index_length || 0)
+          }))
+        },
+        server: serverStats
+      }
+    });
+  } catch (error) {
+    console.error('Get system info error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch system information'
     });
   }
 }));

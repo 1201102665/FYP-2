@@ -45,8 +45,8 @@ export interface FlightSearchParams {
  */
 export const getAllFlights = async (page: number = 1, per_page: number = 8): Promise<{ flights: Flight[], pagination: any }> => {
   try {
-    console.log('🔍 Calling browse flights API:', `/api/flights/browse?page=${page}&per_page=${per_page}`);
-    
+    console.log('🔍 Calling browse flights API:', `flights/browse?page=${page}&per_page=${per_page}`);
+
     const response = await fetch(`/api/flights/browse?page=${page}&per_page=${per_page}`, {
       method: 'GET',
       headers: {
@@ -54,22 +54,22 @@ export const getAllFlights = async (page: number = 1, per_page: number = 8): Pro
         'Content-Type': 'application/json'
       }
     });
-    
+
     console.log('📡 Browse API response status:', response.status, response.statusText);
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ Browse API error response:', errorText);
       throw new Error(`Failed to fetch flights: ${response.status} ${response.statusText}`);
     }
-    
+
     const result = await response.json();
     console.log('📋 Browse API result:', result);
-    
+
     if (!result.success) {
       throw new Error(result.message || 'Failed to fetch flights');
     }
-    
+
     return {
       flights: result.flights || [],
       pagination: result.pagination || {}
@@ -94,15 +94,15 @@ export const searchFlights = async (searchParams: FlightSearchParams): Promise<F
   try {
     // If no search criteria provided, use browse mode
     const hasSearchCriteria = searchParams.origin && searchParams.destination;
-    
+
     if (!hasSearchCriteria) {
       console.log('No search criteria provided, using browse mode');
       const browseResult = await browseFlights();
       return browseResult.flights;
     }
-    
+
     console.log('🔍 Searching flights with params:', searchParams);
-    
+
     const response = await fetch('/api/flights/search', {
       method: 'POST',
       headers: {
@@ -111,22 +111,22 @@ export const searchFlights = async (searchParams: FlightSearchParams): Promise<F
       },
       body: JSON.stringify(searchParams)
     });
-    
+
     console.log('📡 Search API response status:', response.status, response.statusText);
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ Search API error response:', errorText);
       throw new Error(`Search failed: ${response.status} ${response.statusText}`);
     }
-    
+
     const result = await response.json();
     console.log('📋 Search API result:', result);
-    
+
     if (!result.success) {
       throw new Error(result.message || 'Search failed');
     }
-    
+
     return result.flights || [];
   } catch (error) {
     console.error('❌ Error searching flights:', error);
@@ -145,7 +145,7 @@ export const getFlightsByRoute = async (origin: string, destination: string, dat
       departure_date: date,
       limit: 50
     };
-    
+
     return await searchFlights(searchParams);
   } catch (error) {
     console.error('❌ Error getting flights by route:', error);
