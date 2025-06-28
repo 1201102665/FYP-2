@@ -36,7 +36,7 @@ const CarCard: React.FC<CarCardProps> = ({ car }) => {
   // Safe defaults for car properties
   const safeImages = car?.images || [];
   const safeFeatures = car?.features || [];
-  
+
   // Simplified fallback image
   const getFallbackImage = () => {
     return 'https://images.unsplash.com/photo-1550355291-bbee04a92027?w=800&auto=format&fit=crop&q=60';
@@ -44,14 +44,13 @@ const CarCard: React.FC<CarCardProps> = ({ car }) => {
 
   // Simple image logic - always ensure we have an image
   const currentImage = safeImages.length > 0 ? safeImages[currentImageIndex] : getFallbackImage();
-  console.log('🖼️ CarCard - Current image URL:', currentImage);
 
   const displayImages = safeImages.length > 0 && safeImages[0].startsWith('http') ? safeImages : [getFallbackImage()];
 
   const handleNextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     const maxIndex = Math.max(0, displayImages.length - 1);
-    setCurrentImageIndex(prev => 
+    setCurrentImageIndex(prev =>
       prev >= maxIndex ? 0 : prev + 1
     );
     setImageError(false);
@@ -60,7 +59,7 @@ const CarCard: React.FC<CarCardProps> = ({ car }) => {
   const handlePrevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     const maxIndex = Math.max(0, displayImages.length - 1);
-    setCurrentImageIndex(prev => 
+    setCurrentImageIndex(prev =>
       prev <= 0 ? maxIndex : prev - 1
     );
     setImageError(false);
@@ -87,7 +86,7 @@ const CarCard: React.FC<CarCardProps> = ({ car }) => {
           luggage: car.luggage_capacity
         }
       });
-      
+
       toast({
         title: "Added to cart",
         description: `${car.make} ${car.model} has been added to your cart.`,
@@ -112,20 +111,18 @@ const CarCard: React.FC<CarCardProps> = ({ car }) => {
             src={currentImage}
             alt={`${car.make} ${car.model}`}
             className="w-full h-full object-cover"
-            style={{ 
-              height: '250px', 
-              width: '100%', 
+            style={{
+              height: '250px',
+              width: '100%',
               display: 'block',
               objectFit: 'cover'
             }}
             onLoad={() => {
-              console.log('✅ Image loaded successfully:', currentImage);
+              // Image loaded successfully
             }}
             onError={(e) => {
-              console.error('❌ Image failed to load:', currentImage);
               const target = e.target as HTMLImageElement;
               const fallbackUrl = 'https://images.unsplash.com/photo-1550355291-bbee04a92027?w=800&auto=format&fit=crop&q=60';
-              console.log('🔄 Setting emergency fallback:', fallbackUrl);
               target.src = fallbackUrl;
             }}
           />

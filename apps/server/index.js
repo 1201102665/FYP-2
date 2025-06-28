@@ -37,6 +37,7 @@ import searchRoutes from './routes/search.js';
 import destinationRoutes from './routes/destinations.js';
 import preferencesRoutes from './routes/preferences.js';
 import aiRoutes from './routes/ai.js';
+import recommendationsRoutes from './routes/recommendations.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -115,6 +116,7 @@ app.use('/api/search', searchRoutes);
 app.use('/api/destinations', destinationRoutes);
 app.use('/api/preferences', preferencesRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/recommendations', recommendationsRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

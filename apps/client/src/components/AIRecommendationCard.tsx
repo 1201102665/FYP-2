@@ -35,37 +35,37 @@ const AIRecommendationCard: React.FC<AIRecommendationCardProps> = ({
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" data-id="m52cbjits" data-path="src/components/AIRecommendationCard.tsx" />
         <div className="absolute bottom-0 left-0 p-4" data-id="zm4q8aq76" data-path="src/components/AIRecommendationCard.tsx">
           <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-aerotrav-yellow text-gray-900 mb-2" data-id="9hwbe0qfe" data-path="src/components/AIRecommendationCard.tsx">
-            AI Recommended
+            Recommended
           </span>
         </div>
       </div>
-      
+
       <CardHeader data-id="x6tuzb6dr" data-path="src/components/AIRecommendationCard.tsx">
         <CardTitle className="text-xl font-bold" data-id="coa8yf98l" data-path="src/components/AIRecommendationCard.tsx">{destination}</CardTitle>
         <CardDescription className="text-sm italic" data-id="9yaq4epe6" data-path="src/components/AIRecommendationCard.tsx">
           Personalized for you
         </CardDescription>
       </CardHeader>
-      
+
       <CardContent data-id="f8rzg8xko" data-path="src/components/AIRecommendationCard.tsx">
         <div className="mb-4" data-id="nj7jatx07" data-path="src/components/AIRecommendationCard.tsx">
           <h4 className="text-sm font-medium mb-2" data-id="0git3vxx5" data-path="src/components/AIRecommendationCard.tsx">Suggested Activities:</h4>
           <ul className="space-y-1" data-id="ekm5sqqp7" data-path="src/components/AIRecommendationCard.tsx">
             {activities.slice(0, 3).map((activity, index) =>
-            <li key={index} className="flex items-start text-sm" data-id="kgad8tffr" data-path="src/components/AIRecommendationCard.tsx">
+              <li key={index} className="flex items-start text-sm" data-id="kgad8tffr" data-path="src/components/AIRecommendationCard.tsx">
                 <span className="mr-2" data-id="psvmf3ckk" data-path="src/components/AIRecommendationCard.tsx">•</span>
                 <span data-id="zxgan9ox9" data-path="src/components/AIRecommendationCard.tsx">{activity}</span>
               </li>
             )}
           </ul>
         </div>
-        
+
         <div data-id="lc0qt8vq6" data-path="src/components/AIRecommendationCard.tsx">
           <h4 className="text-sm font-medium mb-1" data-id="ctktxyd5d" data-path="src/components/AIRecommendationCard.tsx">Why we recommended this:</h4>
           <p className="text-sm text-gray-600" data-id="26otrwrr9" data-path="src/components/AIRecommendationCard.tsx">{reason}</p>
         </div>
       </CardContent>
-      
+
       <CardFooter className="flex justify-between" data-id="0hns30bda" data-path="src/components/AIRecommendationCard.tsx">
         <Button
           variant="outline"

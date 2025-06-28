@@ -9,7 +9,7 @@ import AdventureCard from "@/components/AdventureCard";
 import DestinationCard from "@/components/DestinationCard";
 import ReviewCard from "@/components/ReviewCard";
 import AIRecommendationsSection from "@/components/AIRecommendationsSection";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useUserActivityContext } from "@/contexts/UserActivityContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Destination } from "@/services/destinationService";
@@ -84,6 +84,7 @@ const HomePage = () => {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const hasTrackedView = useRef(false);
   const [apiDestinations, setApiDestinations] = useState<Destination[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectedTab, setSelectedTab] = useState('All');
@@ -116,9 +117,11 @@ const HomePage = () => {
     fetchDestinations();
   }, []);
 
+  // Track homepage view only once
   useEffect(() => {
-    if (trackView) {
+    if (trackView && !hasTrackedView.current) {
       trackView('homepage-main', 'destination');
+      hasTrackedView.current = true;
     }
   }, [trackView]);
 

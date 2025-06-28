@@ -20,34 +20,26 @@ const parseJsonField = (field) => {
 
 // Helper function to generate proper car image URLs
 const generateCarImageUrls = (images, carMake, carModel, carCategory) => {
-  console.log(`🖼️ Generating images for ${carMake} ${carModel} (${carCategory})`);
-  console.log('Raw images from DB:', images);
-  
   if (!images || images.length === 0) {
     // Return category-specific fallback images
     const fallbacks = getCategoryFallbackImages(carCategory);
-    console.log('No images found, using fallbacks:', fallbacks);
     return fallbacks;
   }
-  
+
   // Convert relative paths to full URLs or use fallbacks
   const processedImages = images.map(image => {
     if (image.startsWith('http')) {
-      console.log('Using existing URL:', image);
       return image; // Already a full URL
     }
-    
+
     // For local images, check if they exist, otherwise use fallbacks
     const imageUrl = `/images/cars/${image}`;
-    console.log('Local image path would be:', imageUrl);
-    
+
     // For now, since we don't have the actual car images, use specific fallbacks
     const fallback = getCategoryFallbackImages(carCategory)[0];
-    console.log('Using fallback instead:', fallback);
     return fallback;
   });
-  
-  console.log('Final processed images:', processedImages);
+
   return processedImages;
 };
 
@@ -79,7 +71,7 @@ const getCategoryFallbackImages = (category) => {
       'https://images.unsplash.com/photo-1571876019459-4c3c81db85c8?w=800&auto=format&fit=crop&q=60'
     ]
   };
-  
+
   return fallbackImages[category] || fallbackImages.standard;
 };
 
@@ -87,12 +79,12 @@ const getCategoryFallbackImages = (category) => {
 router.get('/debug', asyncHandler(async (req, res) => {
   try {
     console.log('🔧 Debug: Checking raw database content');
-    
+
     // Get all cars with their makes and categories
     const cars = await db.query('SELECT id, make, model, category FROM cars LIMIT 20');
-    
+
     console.log('🔧 Debug: Raw cars from DB:', cars);
-    
+
     res.json({
       success: true,
       debug: true,
@@ -101,7 +93,7 @@ router.get('/debug', asyncHandler(async (req, res) => {
       makes: [...new Set(cars.map(car => car.make))],
       categories: [...new Set(cars.map(car => car.category))]
     });
-    
+
   } catch (error) {
     console.error('❌ Debug error:', error);
     res.status(500).json({
@@ -117,12 +109,12 @@ router.get('/debug-search/:term', asyncHandler(async (req, res) => {
   try {
     const { term } = req.params;
     console.log('🔧 Debug search for:', term);
-    
+
     // Test simple searches
     const bmwCars = await db.query('SELECT * FROM cars WHERE LOWER(make) LIKE \'%bmw%\'');
     const mercedesCars = await db.query('SELECT * FROM cars WHERE LOWER(make) LIKE \'%mercedes%\'');
     const luxuryCars = await db.query('SELECT * FROM cars WHERE LOWER(category) = \'luxury\'');
-    
+
     res.json({
       success: true,
       debug_search: term,
@@ -133,7 +125,7 @@ router.get('/debug-search/:term', asyncHandler(async (req, res) => {
       mercedes_results: mercedesCars,
       luxury_results: luxuryCars
     });
-    
+
   } catch (error) {
     console.error('❌ Debug search error:', error);
     res.status(500).json({
@@ -147,14 +139,10 @@ router.get('/debug-search/:term', asyncHandler(async (req, res) => {
 // Simple GET endpoint to retrieve all cars
 router.get('/', asyncHandler(async (req, res) => {
   try {
-    console.log('🚗 Getting all cars');
-    
     // First check if we have any cars in the database
     const [{ count }] = await db.query('SELECT COUNT(*) as count FROM cars');
-    console.log('📊 Total cars in database:', count);
-    
+
     if (count === 0) {
-      console.log('⚠️ No cars found in database');
       return res.json({
         success: true,
         data: {
@@ -170,27 +158,15 @@ router.get('/', asyncHandler(async (req, res) => {
         }
       });
     }
-    
+
     const { page = 1, per_page = 12 } = req.query;
     const offset = (page - 1) * per_page;
-    
+
     // Get cars with pagination
     const cars = await db.query(
       'SELECT * FROM cars WHERE status = "available" LIMIT ? OFFSET ?',
       [parseInt(per_page), offset]
     );
-    
-    console.log('✅ Found cars:', cars.length);
-    
-    // Get some sample data to verify
-    if (cars.length > 0) {
-      console.log('📝 Sample car:', {
-        id: cars[0].id,
-        make: cars[0].make,
-        model: cars[0].model,
-        category: cars[0].category
-      });
-    }
 
     // Transform the data to ensure proper JSON parsing
     const transformedCars = cars.map(car => ({
@@ -247,14 +223,10 @@ router.get('/', asyncHandler(async (req, res) => {
 // Car Search endpoint with proper filtering
 router.post('/search', asyncHandler(async (req, res) => {
   try {
-    console.log('🔍 Car search request:', req.body);
-
     // First check if we have any cars in the database
     const [{ count }] = await db.query('SELECT COUNT(*) as count FROM cars');
-    console.log('📊 Total cars in database:', count);
-    
+
     if (count === 0) {
-      console.log('⚠️ No cars found in database');
       return res.json({
         success: true,
         data: {
@@ -293,8 +265,7 @@ router.post('/search', asyncHandler(async (req, res) => {
     // Location and car search - simplified and reliable
     if (pickup_location && pickup_location.trim() !== '') {
       const searchTerm = pickup_location.toLowerCase().trim();
-      console.log(`🔍 Server searching for: "${pickup_location}" -> "${searchTerm}"`);
-      
+
       // Special handling for common brands and categories
       const commonBrands = {
         'mercedes': 'mercedes-benz',
@@ -305,9 +276,9 @@ router.post('/search', asyncHandler(async (req, res) => {
         'toyota': 'toyota',
         'honda': 'honda'
       };
-      
+
       const commonCategories = ['luxury', 'suv', 'economy', 'compact'];
-      
+
       // Check if it's a common brand search
       if (commonBrands[searchTerm]) {
         whereConditions.push('LOWER(make) LIKE ?');
@@ -377,15 +348,9 @@ router.post('/search', asyncHandler(async (req, res) => {
     const offset = (page - 1) * per_page;
 
     // Build the final query
-    const whereClause = whereConditions.length > 0 
+    const whereClause = whereConditions.length > 0
       ? 'WHERE ' + whereConditions.join(' AND ')
       : '';
-
-    console.log('📝 SQL Query:', {
-      sql: `SELECT * FROM cars ${whereClause} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
-      values: [...values, parseInt(per_page), offset],
-      conditions: whereConditions
-    });
 
     // Get cars with pagination
     const cars = await db.query(
@@ -398,8 +363,6 @@ router.post('/search', asyncHandler(async (req, res) => {
       `SELECT COUNT(*) as total FROM cars ${whereClause}`,
       values
     );
-
-    console.log('✅ Found cars:', cars.length, 'out of', total, 'total');
 
     // Transform the data to ensure proper JSON parsing
     const transformedCars = cars.map(car => ({
@@ -491,7 +454,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
   try {
     const car = await db.queryOne('SELECT * FROM cars WHERE id = ?', [id]);
-    
+
     if (!car) {
       return res.status(404).json({
         success: false,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export interface UserActivity {
   searches: {
@@ -41,22 +41,29 @@ const DEFAULT_USER_ACTIVITY: UserActivity = {
 
 export function useUserActivity() {
   const [userActivity, setUserActivity] = useState<UserActivity>(DEFAULT_USER_ACTIVITY);
+  const isInitialized = useRef(false);
 
   // Load from localStorage on mount
   useEffect(() => {
-    const storedActivity = localStorage.getItem('userActivity');
-    if (storedActivity) {
-      try {
-        setUserActivity(JSON.parse(storedActivity));
-      } catch (e) {
-        console.error('Failed to parse stored user activity:', e);
+    if (!isInitialized.current) {
+      const storedActivity = localStorage.getItem('userActivity');
+      if (storedActivity) {
+        try {
+          const parsed = JSON.parse(storedActivity);
+          setUserActivity(parsed);
+        } catch (e) {
+          console.error('Failed to parse stored user activity:', e);
+        }
       }
+      isInitialized.current = true;
     }
   }, []);
 
-  // Save to localStorage when state changes
+  // Save to localStorage when state changes (but only after initialization)
   useEffect(() => {
-    localStorage.setItem('userActivity', JSON.stringify(userActivity));
+    if (isInitialized.current) {
+      localStorage.setItem('userActivity', JSON.stringify(userActivity));
+    }
   }, [userActivity]);
 
   const trackSearch = (destination: string, date: string, type: 'flight' | 'hotel' | 'car' | 'package') => {
@@ -87,8 +94,8 @@ export function useUserActivity() {
       // Find the first view of this item to calculate time-to-book
       const firstView = prev.views.find((view) => view.itemId === itemId && view.type === type);
       const timeToBook = firstView ?
-      (new Date().getTime() - new Date(firstView.timestamp).getTime()) / 1000 : // Convert to seconds
-      undefined;
+        (new Date().getTime() - new Date(firstView.timestamp).getTime()) / 1000 : // Convert to seconds
+        undefined;
 
       return {
         ...prev,

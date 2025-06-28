@@ -26,10 +26,10 @@ import {
 import { getCars, searchCars as searchCarsService, getCarReservations, getCarReviews, getCarSuggestions, getAllCarCategories, getAllCarSeats, getAllCarRates } from "@/services/carService";
 import { useUserActivityContext } from "@/contexts/UserActivityContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  Calendar, 
-  MapPin, 
-  Users, 
+import {
+  Calendar,
+  MapPin,
+  Users,
   Car as CarIcon,
   Star,
   Fuel,
@@ -111,7 +111,6 @@ const CarRentalPage = () => {
       try {
         const result = await getCars(1, 10);
         if (result.success && result.data) {
-          console.log('Initial cars loaded:', result.data.cars);
           setCars(result.data.cars);
           setPagination(result.data.pagination);
         } else {
@@ -188,7 +187,7 @@ const CarRentalPage = () => {
       supplier: ''
     });
     setCurrentPage(1);
-    handleSearch();
+    handleMultiFieldSearch();
   };
 
   // Debounced search function
@@ -209,9 +208,8 @@ const CarRentalPage = () => {
             page: 1,
             per_page: 10
           });
-          
+
           if (result.success && result.data) {
-            console.log('Search results:', result.data.cars);
             setCars(result.data.cars);
             setPagination(result.data.pagination);
           } else {
@@ -238,7 +236,7 @@ const CarRentalPage = () => {
   // Load initial state from URL
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
-    
+
     const initialSearchParams = {
       pickup_location: queryParams.get('pickup_location') || '',
       dropoff_location: queryParams.get('dropoff_location') || '',
@@ -265,7 +263,7 @@ const CarRentalPage = () => {
   const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleSearch();
+      handleMultiFieldSearch();
     }
   };
 
@@ -285,11 +283,11 @@ const CarRentalPage = () => {
         }
       });
     } else {
-      navigate('/login', { 
-        state: { 
+      navigate('/login', {
+        state: {
           from: `/car-booking/${carId}`,
           searchParams
-        } 
+        }
       });
     }
   };
@@ -359,7 +357,7 @@ const CarRentalPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
-      
+
       {/* Car Search Bar - Hotel Style UI */}
       <div className="bg-gradient-to-r from-aerotrav-blue via-aerotrav-blue-700 to-aerotrav-blue-800 py-8">
         <div className="container mx-auto px-4">

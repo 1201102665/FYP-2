@@ -6,6 +6,20 @@ import { Heart, MapPin, Clock, Star, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
+interface PackageRecommendation {
+  id: number;
+  name?: string;
+  title?: string;
+  description?: string;
+  destination?: string;
+  image_url?: string;
+  rating?: number;
+  price?: number;
+  base_price?: number;
+  tags?: string[];
+  categories?: string[];
+}
+
 interface RecommendationCardProps {
   id: number;
   title: string;
@@ -17,29 +31,28 @@ interface RecommendationCardProps {
   type: 'destination' | 'hotel' | 'package';
 }
 
-const RecommendationCard: React.FC<RecommendationCardProps> = ({ 
-  id, title, subtitle, image, rating, price, tags, type 
+const RecommendationCard: React.FC<RecommendationCardProps> = ({
+  id, title, subtitle, image, rating, price, tags, type
 }) => {
   const [liked, setLiked] = useState(false);
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       <div className="relative">
-        <img 
-          src={image} 
+        <img
+          src={image}
           alt={title}
           className="w-full h-40 object-cover"
         />
         <button
           onClick={() => setLiked(!liked)}
-          className={`absolute top-2 right-2 p-2 rounded-full backdrop-blur-sm transition-colors ${
-            liked ? 'bg-red-100 text-red-500' : 'bg-white/80 text-gray-600 hover:text-red-500'
-          }`}
+          className={`absolute top-2 right-2 p-2 rounded-full backdrop-blur-sm transition-colors ${liked ? 'bg-red-100 text-red-500' : 'bg-white/80 text-gray-600 hover:text-red-500'
+            }`}
         >
           <Heart className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} />
         </button>
       </div>
-      
+
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1">
@@ -54,7 +67,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             <span>{rating}</span>
           </div>
         </div>
-        
+
         <div className="flex flex-wrap gap-1 mb-3">
           {tags.slice(0, 2).map((tag, index) => (
             <Badge key={index} variant="secondary" className="text-xs px-2 py-0">
@@ -62,7 +75,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             </Badge>
           ))}
         </div>
-        
+
         <div className="flex items-center justify-between">
           <div className="text-lg font-bold text-aerotrav-blue">
             ${price}
@@ -86,24 +99,28 @@ const AIRecommendationsSection: React.FC = () => {
   const fetchRecommendations = async (showToast = false) => {
     try {
       setIsRefreshing(true);
-      const response = await fetch('/api/ai/recommendations');
-      
+      const response = await fetch('/api/recommendations', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
       if (!response.ok) {
         throw new Error('Failed to fetch recommendations');
       }
 
       const data = await response.json();
-      
-      // Transform the AI recommendations into the correct format
-      const transformedRecommendations = data.recommendations.map((rec: any) => ({
+
+      // Transform the recommendations into the correct format
+      const transformedRecommendations = data.data.packages.map((rec: PackageRecommendation) => ({
         id: rec.id,
         title: rec.name || rec.title,
-        subtitle: rec.description?.substring(0, 50) + '...' || rec.location || 'Amazing destination',
+        subtitle: rec.description?.substring(0, 50) + '...' || rec.destination || 'Amazing destination',
         image: rec.image_url || `https://source.unsplash.com/random/400x200/?travel,${rec.name}`,
         rating: rec.rating || 4.5,
         price: rec.price || rec.base_price || 899,
         tags: rec.tags || rec.categories || ['Recommended', 'AI Pick'],
-        type: rec.type || 'destination'
+        type: 'package'
       }));
 
       setRecommendations(transformedRecommendations);
@@ -116,7 +133,7 @@ const AIRecommendationsSection: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching AI recommendations:', error);
+      console.error('Error fetching recommendations:', error);
       toast({
         title: "Error",
         description: "Failed to fetch recommendations. Please try again.",
@@ -145,7 +162,7 @@ const AIRecommendationsSection: React.FC = () => {
         <CardHeader className="pb-3">
           <CardTitle className="text-xl font-bold flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
-            AI-Powered Recommendations
+            Personalized Recommendations
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -179,7 +196,7 @@ const AIRecommendationsSection: React.FC = () => {
         <CardHeader className="pb-3">
           <CardTitle className="text-xl font-bold flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
-            AI-Powered Recommendations
+            Personalized Recommendations
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -198,10 +215,10 @@ const AIRecommendationsSection: React.FC = () => {
       <CardHeader className="pb-3">
         <CardTitle className="text-xl font-bold flex items-center gap-2">
           <TrendingUp className="h-5 w-5" />
-          AI-Powered Recommendations
+          Personalized Recommendations
         </CardTitle>
         <p className="text-sm text-gray-600 mt-1">
-          Personalized suggestions based on your preferences and trending destinations
+          Smart suggestions based on your preferences and travel history
         </p>
       </CardHeader>
       <CardContent>
@@ -210,7 +227,7 @@ const AIRecommendationsSection: React.FC = () => {
             <RecommendationCard key={`${rec.type}-${rec.id}`} {...rec} />
           ))}
         </div>
-        
+
         {recommendations.length === 0 && (
           <div className="text-center py-8 text-gray-500">
             <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -218,10 +235,10 @@ const AIRecommendationsSection: React.FC = () => {
             <p className="text-sm">Check back later for personalized travel suggestions!</p>
           </div>
         )}
-        
+
         <div className="mt-6 text-center">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="bg-white hover:bg-gray-50"
             onClick={handleRefresh}
             disabled={isRefreshing}
