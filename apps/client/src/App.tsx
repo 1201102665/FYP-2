@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { UserActivityProvider } from './contexts/UserActivityContext';
 import { CartProvider } from '@/contexts/CartContext';
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "sonner";
 import HomePage from './pages/HomePage';
 import FlightResultsPage from './pages/FlightResultsPage';
 import HotelSearchPage from './pages/HotelSearchPage';
@@ -39,6 +39,16 @@ import ProtectedRoute from './components/ProtectedRoute';
 import BookingDetailsPage from './pages/BookingDetailsPage';
 import BookingConfirmationPage from './pages/BookingConfirmationPage';
 
+// Admin Components
+import AdminProtectedRoute from './components/AdminProtectedRoute';
+import AdminLoginPage from './pages/AdminLoginPage';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminUsersPage from './pages/AdminUsersPage';
+import AdminBookingsPage from './pages/AdminBookingsPage';
+import AdminBookingDetailsPage from './pages/AdminBookingDetailsPage';
+import AdminContentPage from './pages/AdminContentPage';
+import AdminRatingsPage from './pages/AdminRatingsPage';
+
 function App() {
   return (
     <AuthProvider>
@@ -47,6 +57,7 @@ function App() {
           <Router>
             <div className="App">
               <Routes>
+                {/* Public Routes */}
                 <Route path="/" element={<HomePage />} />
                 <Route path="/flights" element={<FlightResultsPage />} />
                 <Route path="/hotels" element={<HotelSearchPage />} />
@@ -80,11 +91,22 @@ function App() {
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/careers" element={<CareersPage />} />
                 <Route path="/bookings/:id" element={<ProtectedRoute><BookingDetailsPage /></ProtectedRoute>} />
+
+                {/* Admin Routes */}
+                <Route path="/admin/login" element={<AdminLoginPage />} />
+                <Route path="/admin/dashboard" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
+                <Route path="/admin/users" element={<AdminProtectedRoute><AdminUsersPage /></AdminProtectedRoute>} />
+                <Route path="/admin/bookings" element={<AdminProtectedRoute><AdminBookingsPage /></AdminProtectedRoute>} />
+                <Route path="/admin/bookings/:id" element={<AdminProtectedRoute><AdminBookingDetailsPage /></AdminProtectedRoute>} />
+                <Route path="/admin/content" element={<AdminProtectedRoute><AdminContentPage /></AdminProtectedRoute>} />
+                <Route path="/admin/ratings" element={<AdminProtectedRoute><AdminRatingsPage /></AdminProtectedRoute>} />
+
+                {/* Catch all route */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
           </Router>
-          <Toaster />
+          <Toaster richColors closeButton position="top-right" />
         </UserActivityProvider>
       </CartProvider>
     </AuthProvider>

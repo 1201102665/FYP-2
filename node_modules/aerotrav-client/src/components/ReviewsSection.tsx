@@ -37,7 +37,7 @@ const ReviewsSection: React.FC<ReviewsSectionProps> = ({
     try {
       setLoading(true);
       const response = await reviewService.getServiceReviews(itemType, itemId, page, 5);
-      
+
       if (response.success) {
         if (page === 1) {
           setReviews(response.data.reviews);
@@ -64,11 +64,10 @@ const ReviewsSection: React.FC<ReviewsSectionProps> = ({
     return Array.from({ length: 5 }).map((_, i) => (
       <Star
         key={i}
-        className={`h-4 w-4 ${
-          i < Math.floor(rating)
+        className={`h-4 w-4 ${i < Math.floor(rating)
             ? 'fill-yellow-400 text-yellow-400'
             : 'text-gray-300'
-        }`}
+          }`}
       />
     ));
   };
@@ -136,12 +135,12 @@ const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                   Based on {stats.total_reviews} reviews
                 </p>
               </div>
-              
+
               <div className="space-y-2">
                 {[5, 4, 3, 2, 1].map((star) => {
                   const count = stats[`${star === 5 ? 'five' : star === 4 ? 'four' : star === 3 ? 'three' : star === 2 ? 'two' : 'one'}_star` as keyof ReviewStats] as number;
                   const percentage = getRatingPercentage(count);
-                  
+
                   return (
                     <div key={star} className="flex items-center gap-2">
                       <span className="text-sm w-8">{star}★</span>
@@ -193,11 +192,11 @@ const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                       </Badge>
                     )}
                   </div>
-                  
+
                   <div>
                     <h4 className="font-medium mb-2">{review.title}</h4>
                     <p className="text-gray-700 mb-3">{review.comment}</p>
-                    
+
                     {(review.pros || review.cons) && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         {review.pros && (
@@ -215,7 +214,7 @@ const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center gap-4 text-sm text-gray-600">
                     <button className="flex items-center gap-1 hover:text-blue-600">
                       <ThumbsUp className="h-4 w-4" />

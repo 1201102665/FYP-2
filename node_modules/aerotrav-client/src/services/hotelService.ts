@@ -90,19 +90,19 @@ export interface HotelApiResponse<T> {
 export const getAllHotels = async (page: number = 1, per_page: number = 12): Promise<{ hotels: Hotel[], pagination: any }> => {
   try {
     console.log('🏨 Getting all hotels, page:', page, 'per_page:', per_page);
-    
+
     const response = await api.get(`hotels?page=${page}&limit=${per_page}`) as any;
     console.log('📋 Hotels API response:', response);
-    
+
     if (response && response.success && response.data) {
       return {
         hotels: response.data.hotels || [],
         pagination: response.data.pagination || {}
       };
     }
-    
+
     throw new Error('Invalid API response format');
-    
+
   } catch (error) {
     console.error('❌ Error fetching hotels:', error);
     throw error;
@@ -176,11 +176,11 @@ export const getHotelById = async (id: string | number): Promise<Hotel | null> =
 export const createHotel = async (hotelData: Omit<Hotel, 'id'>): Promise<Hotel> => {
   try {
     const response = await api.post('hotels', hotelData) as any;
-    
+
     if (response && response.success && response.data) {
       return response.data.hotel;
     }
-    
+
     throw new Error('Failed to create hotel');
   } catch (error) {
     console.error('❌ Error creating hotel:', error);

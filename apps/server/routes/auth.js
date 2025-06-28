@@ -69,7 +69,6 @@ router.post('/register', (req, res, next) => {
 
 // User Login (converted from login_submit.php)
 router.post('/login', validateUserLogin, asyncHandler(async (req, res) => {
-  console.log('🟢 /login got:', req.body);
   console.log('Login attempt:', { email: req.body.email });
   const { email, password } = req.body;
 
@@ -108,7 +107,7 @@ router.post('/login', validateUserLogin, asyncHandler(async (req, res) => {
   // Verify password
   const isValidPassword = await verifyPassword(password, user.password);
   console.log('Password valid:', isValidPassword);
-
+  
   if (!isValidPassword) {
     return res.status(401).json({
       success: false,
@@ -124,7 +123,7 @@ router.post('/login', validateUserLogin, asyncHandler(async (req, res) => {
     // Log activity
     const sessionId = generateSessionId(req);
     await logUserActivity(user.id, sessionId, 'user_login', {
-      ip_address: req.ip,
+      ip_address: req.ip,  
       user_agent: req.get('User-Agent')
     });
 
@@ -164,7 +163,7 @@ router.get('/profile', asyncHandler(async (req, res) => {
   try {
     const jwt = (await import('jsonwebtoken')).default;
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
+    
     const user = await db.queryOne(
       `SELECT id, name, email, phone, role, status, profile_image, date_of_birth, 
               gender, nationality, passport_number, preferred_language, preferred_currency,
@@ -236,7 +235,7 @@ router.post('/logout', asyncHandler(async (req, res) => {
     try {
       const jwt = (await import('jsonwebtoken')).default;
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
+      
       // Log logout activity
       const sessionId = generateSessionId(req);
       await logUserActivity(decoded.id, sessionId, 'user_logout', {
@@ -264,5 +263,86 @@ router.post('/login_submit.php', (req, res, next) => {
   req.url = '/login';
   next();
 });
+
+// Admin Login
+router.post('/admin/login', validateUserLogin, asyncHandler(async (req, res) => {
+  console.log('Admin login attempt:', { email: req.body.email });
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    console.log('Missing credentials');
+    return res.status(400).json({
+      success: false,
+      message: 'Email and password are required'
+    });
+  }
+
+  // Get user by email and check if they are an admin
+  const user = await db.queryOne(
+    'SELECT id, name, email, password, role, status FROM users WHERE email = ? AND role = "admin"',
+    [email]
+  );
+
+  console.log('Admin user found:', user ? 'yes' : 'no');
+
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid admin credentials'
+    });
+  }
+
+  // Check if user is active
+  if (user.status !== 'active') {
+    console.log('Admin not active:', user.status);
+    return res.status(401).json({
+      success: false,
+      message: 'Account is not active. Please contact support.'
+    });
+  }
+
+  // Verify password
+  const isValidPassword = await verifyPassword(password, user.password);
+  console.log('Password valid:', isValidPassword);
+  
+  if (!isValidPassword) {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid admin credentials'
+    });
+  }
+
+  try {
+    // Generate token
+    const token = generateToken(user);
+    console.log('Token generated successfully');
+
+    // Log activity
+    const sessionId = generateSessionId(req);
+    await logUserActivity(user.id, sessionId, 'admin_login', {
+      ip_address: req.ip,  
+      user_agent: req.get('User-Agent')
+    });
+
+    res.json({
+      success: true,
+      message: 'Admin login successful',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status
+      },
+      token
+    });
+  } catch (error) {
+    console.error('Error during admin login:', error);
+    res.status(500).json({
+      success: false,
+      message: 'An error occurred during login'
+    });
+  }
+}));
 
 export default router; 

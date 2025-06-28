@@ -9,7 +9,7 @@ import Footer from "@/components/Footer";
 import HotelCard from "@/components/HotelCard";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Breadcrumb from "@/components/Breadcrumb";
-import { searchHotels, browseHotels, Hotel } from "@/services/hotelService";
+import { searchHotels, browseHotels, Hotel, getAllHotels } from "@/services/hotelService";
 import {
   Calendar,
   MapPin,
@@ -30,7 +30,6 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import api from "@/services/api";
 import { debounce } from "lodash";
 
 interface SearchParams {
@@ -98,12 +97,12 @@ const HotelSearchPage = () => {
       try {
         setIsTransitioning(true);
         setError(null);
-        
+
         const params = {
           ...searchParamsRef.current,
           destination: value
         };
-        
+
         await loadHotels(params);
       } catch (error) {
         console.error('Search error:', error);
@@ -152,7 +151,7 @@ const HotelSearchPage = () => {
   useEffect(() => {
     // Get search parameters from location state or URL params
     const urlParams = new URLSearchParams(location.search);
-    const stateParams = location.state as { 
+    const stateParams = location.state as {
       destination?: string;
       checkInDate?: string;
       checkOutDate?: string;
@@ -170,7 +169,7 @@ const HotelSearchPage = () => {
 
     // Use the debounced setter
     debouncedSetSearchParams(params);
-    
+
     // Only load if we have actual search params
     if (params.destination || params.checkInDate || params.checkOutDate) {
       loadHotels(params).catch(error => {
@@ -203,12 +202,12 @@ const HotelSearchPage = () => {
   // Save search to history
   const saveToSearchHistory = (searchTerm: string) => {
     if (!searchTerm || searchTerm.length < 2) return;
-    
+
     const updatedHistory = [
       searchTerm,
       ...searchHistory.filter(item => item !== searchTerm)
     ].slice(0, 5); // Keep only last 5 searches
-    
+
     setSearchHistory(updatedHistory);
     localStorage.setItem('hotelSearchHistory', JSON.stringify(updatedHistory));
   };
@@ -217,14 +216,14 @@ const HotelSearchPage = () => {
     setIsTransitioning(true);
     setLoading(true);
     setError(null);
-    
+
     try {
       console.log('🔍 Loading hotels with params:', params);
-      
+
       let hotelData: Hotel[] = [];
       let retryCount = 0;
       const maxRetries = 2;
-      
+
       while (retryCount <= maxRetries) {
         try {
           // Always use search endpoint with proper params
@@ -239,23 +238,23 @@ const HotelSearchPage = () => {
           const result = await searchHotels(searchRequest);
           hotelData = result.hotels;
           break; // Success, exit retry loop
-          
+
         } catch (error) {
           console.warn(`Attempt ${retryCount + 1} failed:`, error);
           retryCount++;
-          
+
           if (retryCount <= maxRetries) {
             // Wait before retrying (exponential backoff)
             await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
             continue;
           }
-          
+
           // If all retries failed, try fallback to simple hotels endpoint
           try {
             console.log('🔄 Falling back to simple hotels endpoint');
-            const response = await api.get('search/hotels-simple') as ApiResponse<HotelsResponse>;
-            if (response?.success && Array.isArray(response?.data?.hotels)) {
-              hotelData = response.data.hotels;
+            const response = await getAllHotels(1, 10);
+            if (response && response.hotels) {
+              hotelData = response.hotels;
               break;
             }
           } catch (fallbackError) {
@@ -268,18 +267,18 @@ const HotelSearchPage = () => {
       console.log('📋 Loaded hotels:', hotelData.length);
       setHotels(hotelData);
       setCurrentPage(1);
-      
+
     } catch (error) {
       console.error('❌ Error loading hotels:', error);
       setHotels([]);
       // Show a more user-friendly error message
       setError('We encountered a temporary issue. Showing available hotels instead.');
-      
+
       // Try one final fallback to show any available hotels
       try {
-        const response = await api.get('hotels?limit=10') as ApiResponse<HotelsResponse>;
-        if (response?.success && Array.isArray(response?.data?.hotels)) {
-          setHotels(response.data.hotels);
+        const response = await getAllHotels(1, 10);
+        if (response && response.hotels) {
+          setHotels(response.hotels);
           setError(null);
         }
       } catch (fallbackError) {
@@ -349,7 +348,7 @@ const HotelSearchPage = () => {
       // Amenities filter
       if (filters.amenities.length > 0) {
         const hasAllAmenities = filters.amenities.every(amenity =>
-          hotel.amenities.some(hotelAmenity => 
+          hotel.amenities.some(hotelAmenity =>
             hotelAmenity.toLowerCase().includes(amenity.toLowerCase())
           )
         );
@@ -409,17 +408,18 @@ const HotelSearchPage = () => {
     }
 
     try {
-      interface SuggestionsResponse {
-        success: boolean;
-        data: {
-          suggestions: string[];
-        };
-      }
-      
-      const response = await api.get(`hotels/suggestions?q=${encodeURIComponent(query)}`) as SuggestionsResponse;
-      if (response && response.success) {
-        setSearchSuggestions(response.data.suggestions || []);
-      }
+      // For now, we'll use a simple approach since suggestions API is not available
+      // In a real implementation, this would call a suggestions endpoint
+      const commonDestinations = [
+        'Paris', 'London', 'New York', 'Tokyo', 'Singapore', 'Bangkok', 'Dubai', 'Sydney',
+        'Rome', 'Barcelona', 'Amsterdam', 'Berlin', 'Prague', 'Vienna', 'Budapest', 'Kuala Lumpur'
+      ];
+
+      const filteredSuggestions = commonDestinations.filter(dest =>
+        dest.toLowerCase().includes(query.toLowerCase())
+      );
+
+      setSearchSuggestions(filteredSuggestions.slice(0, 5));
     } catch (error) {
       console.error('Error fetching suggestions:', error);
       setSearchSuggestions([]);
@@ -439,7 +439,7 @@ const HotelSearchPage = () => {
     setShowSuggestions(false);
     setSearchSuggestions([]);
     saveToSearchHistory(suggestion);
-    
+
     // Load hotels with the selected suggestion
     loadHotels({
       ...searchParams,
@@ -448,9 +448,8 @@ const HotelSearchPage = () => {
   };
 
   // Add CSS classes for smooth transitions
-  const pageClasses = `min-h-screen bg-gray-50 flex flex-col transition-all duration-300 ${
-    isTransitioning ? 'opacity-50' : 'opacity-100'
-  }`;
+  const pageClasses = `min-h-screen bg-gray-50 flex flex-col transition-all duration-300 ${isTransitioning ? 'opacity-50' : 'opacity-100'
+    }`;
 
   // Modify error display to be less intrusive
   const ErrorDisplay = ({ message }: { message: string }) => (
@@ -497,7 +496,7 @@ const HotelSearchPage = () => {
   return (
     <div className={pageClasses}>
       <Header />
-      
+
       <div className="flex-grow">
         {/* Enhanced Interactive Hotel Search Bar */}
         <div className="bg-gradient-to-r from-aerotrav-blue via-aerotrav-blue-700 to-aerotrav-blue-800 py-8">
@@ -574,16 +573,16 @@ const HotelSearchPage = () => {
                       value={`${searchParams.guests}-${searchParams.rooms}`}
                       onChange={(e) => {
                         const [guests, rooms] = e.target.value.split('-');
-                        setSearchParams(prev => ({ 
-                          ...prev, 
+                        setSearchParams(prev => ({
+                          ...prev,
                           guests: parseInt(guests),
                           rooms: parseInt(rooms)
                         }));
                       }}
                       className="w-full pl-12 pr-4 py-5 bg-white/20 backdrop-blur-sm border-2 border-white/40 rounded-2xl text-white focus:outline-none focus:ring-4 focus:ring-aerotrav-yellow/50 focus:border-aerotrav-yellow transition-all duration-300 hover:bg-white/30 focus:bg-white/30 text-lg"
                     >
-                      {[1,2,3,4,5,6].map(guests => 
-                        [1,2,3].map(rooms => (
+                      {[1, 2, 3, 4, 5, 6].map(guests =>
+                        [1, 2, 3].map(rooms => (
                           <option key={`${guests}-${rooms}`} value={`${guests}-${rooms}`} className="bg-aerotrav-blue text-white">
                             {guests} Guest{guests > 1 ? 's' : ''}, {rooms} Room{rooms > 1 ? 's' : ''}
                           </option>
@@ -599,7 +598,7 @@ const HotelSearchPage = () => {
 
                 {/* Enhanced Search Button */}
                 <div className="flex-shrink-0">
-                  <Button 
+                  <Button
                     onClick={handleSearchUpdate}
                     disabled={loading}
                     className="bg-gradient-to-r from-aerotrav-yellow to-yellow-400 hover:from-aerotrav-yellow-500 hover:to-yellow-500 text-aerotrav-blue font-bold px-10 py-5 rounded-2xl h-auto shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed"
@@ -643,7 +642,7 @@ const HotelSearchPage = () => {
 
         <div className="container mx-auto px-4 py-6">
           <Breadcrumb items={breadcrumbItems} />
-          
+
           {/* Search Summary */}
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
             <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
@@ -910,7 +909,7 @@ const HotelSearchPage = () => {
                         price: hotel.price_per_night,
                         images: hotel.images,
                         perks: hotel.amenities,
-                        nights: searchParams.checkInDate && searchParams.checkOutDate 
+                        nights: searchParams.checkInDate && searchParams.checkOutDate
                           ? Math.ceil((new Date(searchParams.checkOutDate).getTime() - new Date(searchParams.checkInDate).getTime()) / (1000 * 60 * 60 * 24))
                           : 1,
                         startDate: searchParams.checkInDate,
@@ -939,7 +938,7 @@ const HotelSearchPage = () => {
                     <ChevronLeft className="w-4 h-4" />
                     Previous
                   </Button>
-                  
+
                   <div className="flex items-center gap-1">
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                       <Button

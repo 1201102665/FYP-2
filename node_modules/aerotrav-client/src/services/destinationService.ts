@@ -17,7 +17,7 @@ export interface Destination {
  */
 export const getDestinations = async (): Promise<Destination[]> => {
   try {
-    const response = await api.get<Destination[]>('/destinations');
+    const response = await api.get<Destination[]>('destinations');
     return response || [];
   } catch (error) {
     console.error('❌ Error fetching destinations:', error);
@@ -30,7 +30,7 @@ export const getDestinations = async (): Promise<Destination[]> => {
  */
 export const getDestinationById = async (id: number): Promise<Destination | null> => {
   try {
-    const response = await api.get<Destination>(`/destinations/${id}`);
+    const response = await api.get<Destination>(`destinations/${id}`);
     return response || null;
   } catch (error) {
     console.error(`❌ Error fetching destination ID ${id}:`, error);

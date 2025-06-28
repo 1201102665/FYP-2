@@ -69,7 +69,7 @@ router.get('/all', asyncHandler(async (req, res) => {
         COUNT(*) as total,
         SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
         SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN status = 'suspended' THEN 1 ELSE 0 END) as suspended
+        SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END) as inactive
       FROM users
     `);
 
@@ -103,7 +103,7 @@ router.get('/all', asyncHandler(async (req, res) => {
           total: parseInt(stats.total),
           active: parseInt(stats.active),
           pending: parseInt(stats.pending),
-          suspended: parseInt(stats.suspended)
+          inactive: parseInt(stats.inactive)
         }
       }
     });

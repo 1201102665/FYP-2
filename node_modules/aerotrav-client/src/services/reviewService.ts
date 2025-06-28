@@ -50,7 +50,7 @@ export interface ReviewStats {
 export const reviewService = {
   // Submit a new review
   submitReview: async (reviewData: ReviewData) => {
-    return await api.post('/reviews/submit', reviewData);
+    return await api.post('reviews/submit', reviewData);
   },
 
   // Get reviews for a specific service
@@ -60,23 +60,23 @@ export const reviewService = {
     page: number = 1,
     limit: number = 10
   ) => {
-    return await api.get(`/reviews/service/${serviceType}/${serviceId}`, { page, limit });
+    return await api.get(`reviews/service/${serviceType}/${serviceId}`, { page, limit });
   },
 
   // Get user's reviews
   getUserReviews: async (page: number = 1, limit: number = 10) => {
-    return await api.get('/reviews/user', { page, limit });
+    return await api.get('reviews/user', { page, limit });
   },
 
   // Vote on a review (helpful/not helpful)
   voteReview: async (reviewId: number, voteType: 'helpful' | 'not_helpful') => {
-    return await api.post(`/reviews/${reviewId}/vote`, {
+    return await api.post(`reviews/${reviewId}/vote`, {
       vote_type: voteType
     });
   },
 
   // Check if user can review a specific item
   canReviewItem: async (itemType: string, itemId: number) => {
-    return await api.get(`/reviews/can-review/${itemType}/${itemId}`);
+    return await api.get(`reviews/can-review/${itemType}/${itemId}`);
   }
 }; 

@@ -21,7 +21,7 @@ const BookingsList: React.FC = () => {
 
       try {
         setLoading(true);
-        const data = await getUserBookings(user.id);
+        const data = await getUserBookings();
         setBookings(data);
       } catch (error) {
         console.error('Error fetching bookings:', error);
@@ -80,8 +80,8 @@ const BookingsList: React.FC = () => {
       <CardContent data-id="47qawf888" data-path="src/components/BookingsList.tsx">
         <div className="space-y-4" data-id="r5t9cq4zs" data-path="src/components/BookingsList.tsx">
           {bookings.length > 0 ?
-          bookings.map((booking) =>
-          <div key={booking.id} className="p-4 border rounded-lg" data-id="yfa8q8ckc" data-path="src/components/BookingsList.tsx">
+            bookings.map((booking) =>
+              <div key={booking.id} className="p-4 border rounded-lg" data-id="yfa8q8ckc" data-path="src/components/BookingsList.tsx">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" data-id="hdjgtya5p" data-path="src/components/BookingsList.tsx">
                   <div data-id="pizl5oaoy" data-path="src/components/BookingsList.tsx">
                     <div className="flex items-center gap-2" data-id="76z4jss7g" data-path="src/components/BookingsList.tsx">
@@ -96,32 +96,32 @@ const BookingsList: React.FC = () => {
                     <p className="font-medium mt-1" data-id="oibbj2h8c" data-path="src/components/BookingsList.tsx">${booking.total_amount.toFixed(2)}</p>
                   </div>
                   <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate(`/bookings/${booking.booking_reference}`)} data-id="aln8l6t96" data-path="src/components/BookingsList.tsx">
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/bookings/${booking.id}`)} data-id="aln8l6t96" data-path="src/components/BookingsList.tsx">
                     View Details
                   </Button>
                 </div>
-                
+
                 {booking.items &&
-            <>
+                  <>
                     <Separator className="my-3" data-id="ree5gx6xt" data-path="src/components/BookingsList.tsx" />
                     <div className="text-sm text-gray-600" data-id="nz1zdolbm" data-path="src/components/BookingsList.tsx">
                       <p className="font-medium mb-1" data-id="squ0dh8nu" data-path="src/components/BookingsList.tsx">Items:</p>
                       <ul className="list-disc list-inside" data-id="hyifufja8" data-path="src/components/BookingsList.tsx">
                         {booking.items.map((item) =>
-                  <li key={item.id} data-id="bfwl2j8tt" data-path="src/components/BookingsList.tsx">
+                          <li key={item.id} data-id="bfwl2j8tt" data-path="src/components/BookingsList.tsx">
                             {item.item_name} {item.quantity > 1 ? `(x${item.quantity})` : ''}
                           </li>
-                  )}
+                        )}
                       </ul>
                     </div>
                   </>
-            }
+                }
               </div>
-          ) :
+            ) :
 
-          <div className="text-center py-12" data-id="r7p0fneqb" data-path="src/components/BookingsList.tsx">
+            <div className="text-center py-12" data-id="r7p0fneqb" data-path="src/components/BookingsList.tsx">
               <p className="text-gray-500" data-id="zm4fefz20" data-path="src/components/BookingsList.tsx">You haven't made any bookings yet.</p>
               <Button className="mt-4 bg-aerotrav-blue hover:bg-aerotrav-blue-700" onClick={() => navigate('/')} data-id="2ti2stecb" data-path="src/components/BookingsList.tsx">
                 Explore Destinations

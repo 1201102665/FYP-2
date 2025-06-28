@@ -1,7 +1,10 @@
 {
   "name": "aerotrav-workspace",
   "private": true,
-  "workspaces": ["apps/client", "apps/server"],
+  "workspaces": [
+    "apps/client",
+    "apps/server"
+  ],
   "scripts": {
     "dev": "concurrently -n \"CLIENT,SERVER\" -c \"cyan,green\" \"npm run dev:client\" \"npm run dev:server\"",
     "dev:client": "npm run dev --workspace=apps/client",
@@ -19,5 +22,8 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.81.5"
   }
-} 
+}
