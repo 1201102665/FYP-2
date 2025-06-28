@@ -4,7 +4,7 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Heart, MapPin, Clock, Star, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 interface PackageRecommendation {
   id: number;
@@ -94,7 +94,6 @@ const AIRecommendationsSection: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { isAuthenticated } = useAuth();
-  const { toast } = useToast();
 
   const fetchRecommendations = async (showToast = false) => {
     try {
@@ -126,19 +125,13 @@ const AIRecommendationsSection: React.FC = () => {
       setRecommendations(transformedRecommendations);
 
       if (showToast) {
-        toast({
-          title: "Recommendations Updated",
-          description: "Your personalized recommendations have been refreshed.",
-          variant: "default"
+        toast.success("Recommendations Updated", {
+          description: "Your personalized recommendations have been refreshed."
         });
       }
     } catch (error) {
       console.error('Error fetching recommendations:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch recommendations. Please try again.",
-        variant: "destructive"
-      });
+      toast.error("Failed to fetch recommendations. Please try again.");
       setRecommendations([]);
     } finally {
       setIsLoading(false);

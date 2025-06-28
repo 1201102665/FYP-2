@@ -79,7 +79,7 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
   const userId = req.user.id;
 
   try {
-    const [preferences] = await db.query(
+    const preferences = await db.query(
       'SELECT preference_key, preference_value FROM user_preferences WHERE user_id = ?',
       [userId]
     );

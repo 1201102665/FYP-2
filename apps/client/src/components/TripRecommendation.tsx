@@ -5,7 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { useCartContext } from '@/contexts/CartContext';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 interface TripDay {
   day: number;
@@ -38,7 +38,6 @@ interface TripRecommendationProps {
 const TripRecommendation: React.FC<TripRecommendationProps> = ({ trip, onNewTrip }) => {
   const navigate = useNavigate();
   const { addToCart } = useCartContext();
-  const { toast } = useToast();
 
   const handleAddToCart = () => {
     addToCart({
